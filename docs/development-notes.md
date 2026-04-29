@@ -6,6 +6,9 @@ Run these from the repository root:
 
 ```bash
 pnpm install
+pnpm start
+pnpm start:game-client
+pnpm start:admin-panel
 pnpm lint
 pnpm typecheck
 pnpm test

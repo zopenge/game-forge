@@ -5,6 +5,9 @@
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "build": "pnpm -r --if-present build",
+    "start": "pnpm start:game-client",
+    "start:admin-panel": "pnpm --filter @game-forge/admin-panel start",
+    "start:game-client": "pnpm --filter @game-forge/game-client start",
     "dev:admin-panel": "pnpm --filter @game-forge/admin-panel dev",
     "dev:game-client": "pnpm --filter @game-forge/game-client dev",
     "lint": "eslint . --max-warnings 0",
