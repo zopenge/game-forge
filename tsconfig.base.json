@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": false,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "useDefineForClassFields": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@game-forge/assets": ["packages/assets/src/index.ts"],
+      "@game-forge/device": ["packages/device/src/index.ts"],
+      "@game-forge/graphics": ["packages/graphics/src/index.ts"],
+      "@game-forge/identity": ["packages/identity/src/index.ts"],
+      "@game-forge/input": ["packages/input/src/index.ts"],
+      "@game-forge/platform": ["packages/platform/src/index.ts"],
+      "@game-forge/runtime": ["packages/runtime/src/index.ts"]
+    },
+    "types": ["node"]
+  }
+}

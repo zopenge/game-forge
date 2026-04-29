@@ -1,0 +1,15 @@
+{
+  "name": "@game-forge/admin-panel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@game-forge/device": "workspace:*",
+    "@game-forge/identity": "workspace:*",
+    "@game-forge/platform": "workspace:*"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@game-forge/game-client",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@game-forge/graphics": "workspace:*",
+    "@game-forge/platform": "workspace:*",
+    "@game-forge/runtime": "workspace:*",
+    "three": "^0.171.0"
+  }
+}

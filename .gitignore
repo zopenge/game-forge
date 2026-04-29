@@ -2,6 +2,7 @@
 logs
 *.log
 npm-debug.log*
+pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
@@ -80,6 +81,7 @@ out
 
 # Nuxt.js build / generate output
 .nuxt
+build
 dist
 .output
 
@@ -141,3 +143,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode
+.idea

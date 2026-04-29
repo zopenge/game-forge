@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>game-client</title>
+    <style>
+      html,
+      body,
+      #game-client-root {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        overflow: hidden;
+        background: #08111f;
+        color: #e2ecff;
+        font-family: "Segoe UI", sans-serif;
+      }
+
+      #game-client-root {
+        position: relative;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-client-root"></div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
