@@ -22,7 +22,9 @@
       "@game-forge/identity": ["packages/identity/src/index.ts"],
       "@game-forge/input": ["packages/input/src/index.ts"],
       "@game-forge/platform": ["packages/platform/src/index.ts"],
-      "@game-forge/runtime": ["packages/runtime/src/index.ts"]
+      "@game-forge/runtime": ["packages/runtime/src/index.ts"],
+      "@game-forge/wallet-core": ["packages/wallet/core/src/index.ts"],
+      "@game-forge/wallet-evm": ["packages/wallet/evm/src/index.ts"]
     },
     "types": ["node"]
   }

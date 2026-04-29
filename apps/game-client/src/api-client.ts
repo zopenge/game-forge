@@ -1,11 +1,23 @@
+import type {
+  WalletAssetSnapshot,
+  WalletChallenge,
+  WalletChainKind,
+  WalletProviderKind
+} from '@game-forge/wallet-core';
+
 export interface LoginResponse {
   readonly token: string;
   readonly userId: string;
 }
 
 export interface CurrentUser {
+  readonly authMethod: 'username' | 'wallet';
   readonly userId: string;
   readonly username: string;
+  readonly walletAddress?: string;
+  readonly walletChainId?: number;
+  readonly walletChainKind?: WalletChainKind;
+  readonly walletProviderKind?: WalletProviderKind;
 }
 
 export interface AssetEntry {
@@ -13,10 +25,35 @@ export interface AssetEntry {
   readonly quantity: number;
 }
 
+export interface WalletLoginResponse {
+  readonly token: string;
+  readonly user: CurrentUser;
+  readonly userId: string;
+}
+
+export interface WalletLoginPayload {
+  readonly address: string;
+  readonly chainId: number;
+  readonly chainKind: WalletChainKind;
+  readonly nonce: string;
+  readonly providerKind: WalletProviderKind;
+  readonly signature: string;
+}
+
+export interface WalletChallengePayload {
+  readonly address: string;
+  readonly chainId: number;
+  readonly chainKind: WalletChainKind;
+  readonly providerKind: WalletProviderKind;
+}
+
 export interface ApiClient {
   getAssets(token: string): Promise<AssetEntry[]>;
   getCurrentUser(token: string): Promise<CurrentUser>;
+  getWalletAssets(token: string): Promise<WalletAssetSnapshot>;
   login(username: string): Promise<LoginResponse>;
+  loginWithWallet(payload: WalletLoginPayload): Promise<WalletLoginResponse>;
+  requestWalletChallenge(payload: WalletChallengePayload): Promise<WalletChallenge>;
   setAsset(token: string, payload: AssetEntry): Promise<AssetEntry>;
 }
 
@@ -61,6 +98,7 @@ export const createApiClient = ({
   return {
     getAssets: (token) => authorizedRequest<AssetEntry[]>('/assets', token),
     getCurrentUser: (token) => authorizedRequest<CurrentUser>('/me', token),
+    getWalletAssets: (token) => authorizedRequest<WalletAssetSnapshot>('/wallet-assets', token),
     login: async (username) => {
       const response = await fetchImpl('/auth/login', {
         body: JSON.stringify({ username }),
@@ -72,6 +110,30 @@ export const createApiClient = ({
 
       await assertSuccess(response);
       return response.json() as Promise<LoginResponse>;
+    },
+    loginWithWallet: async (payload) => {
+      const response = await fetchImpl('/auth/wallet/login', {
+        body: JSON.stringify(payload),
+        headers: {
+          'content-type': 'application/json'
+        },
+        method: 'POST'
+      });
+
+      await assertSuccess(response);
+      return response.json() as Promise<WalletLoginResponse>;
+    },
+    requestWalletChallenge: async (payload) => {
+      const response = await fetchImpl('/auth/wallet/challenge', {
+        body: JSON.stringify(payload),
+        headers: {
+          'content-type': 'application/json'
+        },
+        method: 'POST'
+      });
+
+      await assertSuccess(response);
+      return response.json() as Promise<WalletChallenge>;
     },
     setAsset: (token, payload) => authorizedRequest<AssetEntry>('/assets', token, {
       body: JSON.stringify(payload),

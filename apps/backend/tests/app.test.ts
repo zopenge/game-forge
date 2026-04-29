@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { createServerWalletRegistry, WalletError } from '@game-forge/wallet-core';
 
 import { buildApp } from '../src/app';
 
@@ -7,7 +8,51 @@ describe('backend app', () => {
 
   beforeEach(async () => {
     app = await buildApp({
-      jwtSecret: 'test-secret'
+      jwtSecret: 'test-secret',
+      walletRegistry: createServerWalletRegistry([
+        {
+          chainKind: 'evm',
+          createChallenge: (request) => ({
+            ...request,
+            address: request.address.toLowerCase(),
+            expiresAt: new Date(Date.now() + 60_000).toISOString(),
+            message: `Sign ${request.address.toLowerCase()}`,
+            nonce: 'nonce-1'
+          }),
+          listAssets: async (identity) => ({
+            assets: [
+              {
+                assetId: 'native:1',
+                assetType: 'native',
+                balance: '100',
+                chainId: identity.chainId,
+                chainKind: identity.chainKind,
+                decimals: 18,
+                providerKind: identity.providerKind,
+                symbol: 'ETH',
+                walletAddress: identity.address.toLowerCase()
+              }
+            ],
+            chainId: identity.chainId,
+            chainKind: identity.chainKind,
+            providerKind: identity.providerKind,
+            walletAddress: identity.address.toLowerCase()
+          }),
+          providerKind: 'metamask',
+          verifyLogin: async (request) => {
+            if (request.signature !== 'valid-signature') {
+              throw new WalletError('wallet_signature_invalid', 'Signature verification failed.');
+            }
+
+            return {
+              address: request.address.toLowerCase(),
+              chainId: request.chainId,
+              chainKind: request.chainKind,
+              providerKind: request.providerKind
+            };
+          }
+        }
+      ])
     });
   });
 
@@ -82,6 +127,7 @@ describe('backend app', () => {
 
     expect(meResponse.statusCode).toBe(200);
     expect(meResponse.json()).toEqual({
+      authMethod: 'username',
       userId,
       username: 'scout'
     });
@@ -252,5 +298,135 @@ describe('backend app', () => {
     });
 
     expect(secondAssets.json()).toEqual([]);
+  });
+
+  test('wallet challenge and login create a wallet user', async () => {
+    const challengeResponse = await app.inject({
+      method: 'POST',
+      payload: {
+        address: '0xAbC',
+        chainId: 1,
+        chainKind: 'evm',
+        providerKind: 'metamask'
+      },
+      url: '/auth/wallet/challenge'
+    });
+
+    expect(challengeResponse.statusCode).toBe(200);
+    expect(challengeResponse.json()).toMatchObject({
+      address: '0xabc',
+      chainId: 1,
+      chainKind: 'evm',
+      nonce: 'nonce-1',
+      providerKind: 'metamask'
+    });
+
+    const loginResponse = await app.inject({
+      method: 'POST',
+      payload: {
+        address: '0xAbC',
+        chainId: 1,
+        chainKind: 'evm',
+        nonce: 'nonce-1',
+        providerKind: 'metamask',
+        signature: 'valid-signature'
+      },
+      url: '/auth/wallet/login'
+    });
+
+    expect(loginResponse.statusCode).toBe(200);
+    expect(loginResponse.json()).toMatchObject({
+      token: expect.any(String),
+      user: {
+        authMethod: 'wallet',
+        username: 'wallet-0xabc',
+        walletAddress: '0xabc',
+        walletChainId: 1,
+        walletChainKind: 'evm',
+        walletProviderKind: 'metamask'
+      }
+    });
+  });
+
+  test('wallet login rejects invalid signatures', async () => {
+    await app.inject({
+      method: 'POST',
+      payload: {
+        address: '0xAbC',
+        chainId: 1,
+        chainKind: 'evm',
+        providerKind: 'metamask'
+      },
+      url: '/auth/wallet/challenge'
+    });
+
+    const loginResponse = await app.inject({
+      method: 'POST',
+      payload: {
+        address: '0xAbC',
+        chainId: 1,
+        chainKind: 'evm',
+        nonce: 'nonce-1',
+        providerKind: 'metamask',
+        signature: 'invalid-signature'
+      },
+      url: '/auth/wallet/login'
+    });
+
+    expect(loginResponse.statusCode).toBe(400);
+  });
+
+  test('wallet assets return the normalized wallet balances', async () => {
+    await app.inject({
+      method: 'POST',
+      payload: {
+        address: '0xAbC',
+        chainId: 1,
+        chainKind: 'evm',
+        providerKind: 'metamask'
+      },
+      url: '/auth/wallet/challenge'
+    });
+    const loginResponse = await app.inject({
+      method: 'POST',
+      payload: {
+        address: '0xAbC',
+        chainId: 1,
+        chainKind: 'evm',
+        nonce: 'nonce-1',
+        providerKind: 'metamask',
+        signature: 'valid-signature'
+      },
+      url: '/auth/wallet/login'
+    });
+
+    const walletAssetsResponse = await app.inject({
+      headers: {
+        authorization: `Bearer ${loginResponse.json().token}`
+      },
+      method: 'GET',
+      url: '/wallet-assets'
+    });
+
+    expect(walletAssetsResponse.statusCode).toBe(200);
+    expect(walletAssetsResponse.json()).toEqual({
+      assets: [
+        {
+          assetId: 'native:1',
+          assetType: 'native',
+          balance: '100',
+          chainId: 1,
+          chainKind: 'evm',
+          decimals: 18,
+          providerKind: 'metamask',
+          symbol: 'ETH',
+          walletAddress: '0xabc'
+        }
+      ],
+      chainId: 1,
+      chainKind: 'evm',
+      providerKind: 'metamask',
+      walletAddress: '0xabc'
+    });
   });
 });

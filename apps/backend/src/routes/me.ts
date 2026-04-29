@@ -16,8 +16,13 @@ export const meRoutes: FastifyPluginAsync<MeRoutesOptions> = async (
     const currentUser = requireCurrentUser(request);
 
     return {
+      authMethod: currentUser.authMethod,
       userId: currentUser.userId,
-      username: currentUser.username
+      username: currentUser.username,
+      walletAddress: currentUser.walletAddress,
+      walletChainId: currentUser.walletChainId,
+      walletChainKind: currentUser.walletChainKind,
+      walletProviderKind: currentUser.walletProviderKind
     };
   });
 };

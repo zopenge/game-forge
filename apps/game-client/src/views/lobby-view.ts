@@ -1,11 +1,14 @@
+import type { WalletAssetSnapshot } from '@game-forge/wallet-core';
+
 import type { AssetEntry, CurrentUser } from '../api-client';
 
 export interface LobbyViewOptions {
   readonly assets: AssetEntry[];
   readonly user: CurrentUser;
+  readonly walletAssets?: WalletAssetSnapshot | undefined;
 }
 
-export const renderLobbyView = ({ assets, user }: LobbyViewOptions) => {
+export const renderLobbyView = ({ assets, user, walletAssets }: LobbyViewOptions) => {
   const assetMarkup = assets.length > 0
     ? assets.map((asset) => `
         <li class="lobby-asset">
@@ -14,6 +17,14 @@ export const renderLobbyView = ({ assets, user }: LobbyViewOptions) => {
         </li>
       `.trim()).join('')
     : '<li class="lobby-empty">No assets stored yet.</li>';
+  const walletAssetMarkup = walletAssets
+    ? walletAssets.assets.map((asset) => `
+        <li class="lobby-asset">
+          <span>${asset.symbol}</span>
+          <strong>${asset.balance}</strong>
+        </li>
+      `.trim()).join('')
+    : '<li class="lobby-empty">Connect a wallet account to inspect on-chain balances.</li>';
 
   return `
     <section class="lobby-shell">
@@ -23,6 +34,9 @@ export const renderLobbyView = ({ assets, user }: LobbyViewOptions) => {
             <p class="portal-kicker">logged in</p>
             <h1>Welcome, ${user.username}</h1>
             <p class="lobby-meta">User ID: ${user.userId}</p>
+            <p class="lobby-meta">Auth: ${user.authMethod}</p>
+            ${user.walletAddress ? `<p class="lobby-meta">Wallet: ${user.walletAddress}</p>` : ''}
+            ${user.walletChainId ? `<p class="lobby-meta">Chain ID: ${user.walletChainId}</p>` : ''}
           </div>
           <button type="button" data-role="logout-button" class="ghost-button">Log out</button>
         </div>
@@ -41,6 +55,11 @@ export const renderLobbyView = ({ assets, user }: LobbyViewOptions) => {
               <button type="submit">Save asset</button>
             </form>
             <p data-role="asset-error" class="portal-error hidden"></p>
+          </section>
+          <section class="lobby-section">
+            <h2>Wallet assets</h2>
+            <p class="lobby-meta">${walletAssets ? `${walletAssets.providerKind} on chain ${walletAssets.chainId}` : 'Wallet not connected to this profile.'}</p>
+            <ul data-role="wallet-asset-list" class="asset-list">${walletAssetMarkup}</ul>
           </section>
         </div>
         <div class="lobby-actions">

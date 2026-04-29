@@ -12,6 +12,8 @@
     "@game-forge/graphics": "workspace:*",
     "@game-forge/platform": "workspace:*",
     "@game-forge/runtime": "workspace:*",
+    "@game-forge/wallet-core": "workspace:*",
+    "@game-forge/wallet-evm": "workspace:*",
     "three": "^0.171.0"
   }
 }

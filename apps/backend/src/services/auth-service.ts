@@ -7,6 +7,7 @@ export class AuthError extends Error {}
 
 export interface AuthService {
   login(username: string): Promise<{ token: string; user: UserRecord }>;
+  signToken(userId: string): Promise<string>;
   resolveUserByToken(token: string): Promise<UserRecord>;
 }
 
@@ -20,8 +21,13 @@ export const normalizeUsername = (username: string) => username.trim();
 export const createAuthService = ({
   fastify,
   userStore
-}: CreateAuthServiceOptions): AuthService => ({
-  login: async (username) => {
+}: CreateAuthServiceOptions): AuthService => {
+  const signToken = async (userId: string) => fastify.jwt.sign({
+    userId
+  } satisfies AuthTokenPayload);
+
+  return {
+    login: async (username) => {
     const normalizedUsername = normalizeUsername(username);
 
     if (!normalizedUsername) {
@@ -29,12 +35,11 @@ export const createAuthService = ({
     }
 
     const user = userStore.getOrCreateByUsername(normalizedUsername);
-    const token = await fastify.jwt.sign({
-      userId: user.userId
-    } satisfies AuthTokenPayload);
+    const token = await signToken(user.userId);
 
     return { token, user };
   },
+    signToken,
   resolveUserByToken: async (token) => {
     try {
       const payload = await fastify.jwt.verify<AuthTokenPayload>(token);
@@ -49,4 +54,5 @@ export const createAuthService = ({
       throw error instanceof AuthError ? error : new AuthError('Invalid token.');
     }
   }
-});
+  };
+};

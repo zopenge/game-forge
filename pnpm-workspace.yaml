@@ -1,5 +1,6 @@
 packages:
   - apps/*
   - packages/*
+  - packages/wallet/*
   - tests/e2e
   - tests/integration
