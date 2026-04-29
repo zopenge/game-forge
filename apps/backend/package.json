@@ -1,0 +1,19 @@
+{
+  "name": "@game-forge/backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "test": "vitest run tests"
+  },
+  "dependencies": {
+    "@game-forge/identity": "workspace:*",
+    "fastify": "^5.8.5"
+  },
+  "devDependencies": {
+    "@fastify/cors": "^10.1.0",
+    "@fastify/jwt": "^9.1.0"
+  }
+}

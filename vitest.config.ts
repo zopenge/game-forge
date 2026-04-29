@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 export default defineConfig({
   resolve: {
     alias: {
+      '@game-forge/backend': resolve(__dirname, 'apps/backend/src/app.ts'),
+      '@game-forge/backend/*': resolve(__dirname, 'apps/backend/src/*'),
       '@game-forge/assets': resolve(__dirname, 'packages/assets/src/index.ts'),
       '@game-forge/device': resolve(__dirname, 'packages/device/src/index.ts'),
       '@game-forge/graphics': resolve(__dirname, 'packages/graphics/src/index.ts'),

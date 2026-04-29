@@ -15,6 +15,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "paths": {
+      "@game-forge/backend/*": ["apps/backend/src/*"],
       "@game-forge/assets": ["packages/assets/src/index.ts"],
       "@game-forge/device": ["packages/device/src/index.ts"],
       "@game-forge/graphics": ["packages/graphics/src/index.ts"],
