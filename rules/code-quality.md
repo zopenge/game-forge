@@ -11,6 +11,13 @@
 - For code changes, run `pnpm lint`, `pnpm typecheck`, and relevant tests before claiming completion.
 - If a command fails, report the actual failure instead of assuming the code is acceptable.
 
+## Documentation
+
+- When implementation behavior changes, update the relevant docs in the same change.
+- When developer commands change, update `README.md` and `docs/development-notes.md`.
+- When project structure or package boundaries change, update `docs/project-structure.md`.
+- Do not leave stale documentation behind after code changes.
+
 ## TypeScript
 
 - Prefer explicit, readable types at public boundaries.

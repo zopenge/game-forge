@@ -23,6 +23,7 @@ If two rules conflict, prefer:
 - Keep file and directory names in kebab-case.
 - Keep TypeScript type/interface/class/enum names in PascalCase.
 - Keep function names, variable names, object keys, and parameters in camelCase unless an external API requires otherwise.
+- Update relevant docs in the same change when implementation behavior, commands, project structure, workflows, or public interfaces change.
 
 ## Rule Maintenance
 

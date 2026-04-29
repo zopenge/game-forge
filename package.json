@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "build": "pnpm -r --if-present build",
+    "dev": "node ./scripts/run-many.mjs",
     "start": "pnpm start:game-client",
     "start:admin-panel": "pnpm --filter @game-forge/admin-panel start",
     "start:backend": "pnpm --filter @game-forge/backend start",
