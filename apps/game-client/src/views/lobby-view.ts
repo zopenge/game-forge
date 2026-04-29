@@ -1,4 +1,4 @@
-import type { AssetEntry, CurrentUser } from './api-client';
+import type { AssetEntry, CurrentUser } from '../api-client';
 
 export interface LobbyViewOptions {
   readonly assets: AssetEntry[];

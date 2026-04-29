@@ -1,13 +1,13 @@
 import type { RenderApp } from '@game-forge/runtime';
+import './styles/game-shell.css';
 
 import type { ApiClient, AssetEntry, CurrentUser } from './api-client';
 import { createApiClient } from './api-client';
 import type { AuthStorage } from './auth-storage';
 import { createAuthStorage } from './auth-storage';
 import { createGameClientApp } from './create-game-client-app';
-import { gameShellStyles } from './game-shell-styles';
-import { renderLobbyView } from './create-lobby-view';
-import { renderLoginView } from './create-login-view';
+import { renderLobbyView } from './views/lobby-view';
+import { renderLoginView } from './views/login-view';
 
 export interface GameShell {
   resize(): void;
@@ -21,25 +21,12 @@ export interface GameShellOptions {
   readonly host: HTMLElement;
 }
 
-const ensureStyles = (documentRef: Document) => {
-  if (documentRef.getElementById('game-shell-styles')) {
-    return;
-  }
-
-  const style = documentRef.createElement('style');
-  style.id = 'game-shell-styles';
-  style.textContent = gameShellStyles;
-  documentRef.head.append(style);
-};
-
 export const createGameShell = ({
   apiClient = createApiClient(),
   authStorage = createAuthStorage(),
   gameAppFactory = (host) => createGameClientApp({ host }),
   host
 }: GameShellOptions): GameShell => {
-  ensureStyles(document);
-
   let currentAssets: AssetEntry[] = [];
   let currentUser: CurrentUser | undefined;
   let gameApp: RenderApp | undefined;
