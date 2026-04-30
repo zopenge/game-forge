@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { PerspectiveCamera, Scene } from 'three';
 import type { WebGLRenderer } from 'three';
 
+import { createResourceManager } from '@game-forge/resources';
 import type { GameCartridgeContext } from '@game-forge/game-cartridge';
 
 import {
@@ -27,9 +28,11 @@ const createContext = (): GameCartridgeContext => ({
     networking: {
       isAvailable: false
     }
-  }
+  },
+  resources: createResourceManager({
+    resources: fallingBlocksGameCartridge.resources ?? []
+  })
 });
-
 const createRenderScene = () => ({
   camera: new PerspectiveCamera(70, 1, 0.1, 100),
   renderer: {} as WebGLRenderer,
@@ -49,6 +52,7 @@ describe('falling-blocks-game-cartridge', () => {
       input: 'keyboard',
       networking: 'none'
     });
+    expect(fallingBlocksGameCartridge.resources?.every((resource) => resource.key.startsWith('falling-blocks.'))).toBe(true);
     expect(fallingBlocksGameCartridge.messages['en-US'][fallingBlocksGameCartridge.titleKey]).toBe('Falling Blocks');
     expect(fallingBlocksGameCartridge.messages['zh-CN'][fallingBlocksGameCartridge.titleKey]).toBe('俄罗斯方块');
   });
@@ -84,5 +88,16 @@ describe('falling-blocks-game-cartridge', () => {
 
     teardown?.();
     expect(renderScene.scene.children.length).toBe(0);
+  });
+
+  test('can resolve declared resources through the cartridge context', () => {
+    const context = createContext();
+    const module = fallingBlocksGameCartridge.createModule(context);
+
+    expect(context.resources.resolve('falling-blocks.board-config')).toEqual(expect.objectContaining({
+      key: 'falling-blocks.board-config',
+      kind: 'json'
+    }));
+    expect(module).toBeDefined();
   });
 });

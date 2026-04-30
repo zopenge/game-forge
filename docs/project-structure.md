@@ -115,6 +115,7 @@ Small built-in shooter cartridge for testing the cartridge lifecycle.
 
 - Uses the Three.js graphics path through `@game-forge/graphics`
 - Provides localized cartridge metadata through `@game-forge/i18n`
+- Declares private resources from `assets/` and receives a resource manager through cartridge context
 - Exercises player movement, projectiles, enemy motion, collision, and scoring behavior
 
 ### `packages/games/falling-blocks`
@@ -123,6 +124,7 @@ Small built-in falling-blocks cartridge for testing grid-like gameplay.
 
 - Uses the Three.js graphics path through `@game-forge/graphics`
 - Provides localized cartridge metadata through `@game-forge/i18n`
+- Declares private resources from `assets/` and receives a resource manager through cartridge context
 - Exercises board state, piece movement, rotation, line clears, and game-over state
 
 ### `packages/wallet/core`
@@ -175,12 +177,25 @@ Owns small identity helpers.
 - incremental id generation
 - session id generation
 
-### `packages/assets`
+### `packages/resources`
 
-Owns asset registration and lookup helpers.
+Owns asset registration, resource catalogs, and generic resource loading.
 
 - asset catalog
 - asset record lookup
+- resource catalog
+- `ResourceManager` for image, audio, JSON, text, and binary resources
+- preload, memory cache, unload, and load-state tracking
+
+The package stays renderer-agnostic. Three-specific texture or model helpers should live in graphics adapters or game packages.
+
+### `packages/shared-resources`
+
+Owns platform-level resources that are reused by more than one cartridge.
+
+- shared resource records
+- small bundled placeholder resources
+- keys prefixed with `shared.`
 
 ### `packages/platform`
 
@@ -192,9 +207,21 @@ Owns environment-facing platform helpers.
 
 - `apps/game-client/src/game-cartridges.ts` imports built-in cartridges and registers them with `createGameCartridgeRegistry()`.
 - The lobby renders translated cartridge metadata from each cartridge's message catalog.
-- When the player starts a cartridge, the shell creates `GameCartridgeContext` with player identity, local assets, wallet assets, i18n, and platform services.
+- When the player starts a cartridge, the shell creates `GameCartridgeContext` with player identity, local assets, wallet assets, i18n, resources, and platform services.
+- Before launch, the shell merges `@game-forge/shared-resources` records with the selected cartridge's private resources and preloads required resources.
+- If resource preload fails, the player stays in the lobby and sees a localized load error.
 - v1 only supports Three.js cartridges through `RuntimeModule<ThreeRenderScene>`.
 - v1 exposes `services.networking.isAvailable === false` as the reserved location for later networking support.
+
+## Game Resources
+
+- Shared resources live in `packages/shared-resources/assets/` and are exported as `sharedResources`.
+- Cartridge-private resources live in `packages/games/<game-id>/assets/`.
+- Resource keys are namespaced, such as `shared.ui-click`, `bee-shooter.projectile-config`, and `falling-blocks.board-config`.
+- Cartridges declare resource records on `GameCartridge.resources`.
+- Games access resources through `context.resources`, not by hardcoding platform paths.
+- v1 uses bundled package resources and `new URL('../assets/file.ext', import.meta.url).href`.
+- `@game-forge/resources` does not depend on Three; games can pass resolved URLs to renderer-specific loaders when needed.
 
 ## Multiplayer Extension Points
 
@@ -280,5 +307,6 @@ Human-readable repository documentation, including this file.
 - Game cartridge protocol and concrete game implementations are separated on purpose
 - Wallet contracts and wallet implementations are separated on purpose
 - Rendering abstraction is narrow to avoid unnecessary performance overhead
+- Resource loading is centralized in `@game-forge/resources` while actual game files stay near their cartridge
 - Multiplayer transport should be injected as a platform service rather than implemented separately by each cartridge
 - Repository rules are kept under `rules/`, not hidden only in chat history

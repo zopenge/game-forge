@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@game-forge/resources": "workspace:*",
     "@game-forge/bee-shooter": "workspace:*",
     "@game-forge/falling-blocks": "workspace:*",
     "@game-forge/game-cartridge": "workspace:*",
@@ -16,6 +17,7 @@
     "@game-forge/i18n": "workspace:*",
     "@game-forge/platform": "workspace:*",
     "@game-forge/runtime": "workspace:*",
+    "@game-forge/shared-resources": "workspace:*",
     "@game-forge/wallet-core": "workspace:*",
     "@game-forge/wallet-evm": "workspace:*",
     "three": "^0.171.0"

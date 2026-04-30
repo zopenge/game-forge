@@ -108,9 +108,15 @@ importers:
       '@game-forge/platform':
         specifier: workspace:*
         version: link:../../packages/platform
+      '@game-forge/resources':
+        specifier: workspace:*
+        version: link:../../packages/resources
       '@game-forge/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
+      '@game-forge/shared-resources':
+        specifier: workspace:*
+        version: link:../../packages/shared-resources
       '@game-forge/wallet-core':
         specifier: workspace:*
         version: link:../../packages/wallet/core
@@ -133,6 +139,9 @@ importers:
       '@game-forge/i18n':
         specifier: workspace:*
         version: link:../i18n
+      '@game-forge/resources':
+        specifier: workspace:*
+        version: link:../resources
       '@game-forge/runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -151,6 +160,9 @@ importers:
       '@game-forge/i18n':
         specifier: workspace:*
         version: link:../../i18n
+      '@game-forge/resources':
+        specifier: workspace:*
+        version: link:../../resources
       '@game-forge/runtime':
         specifier: workspace:*
         version: link:../../runtime
@@ -169,6 +181,9 @@ importers:
       '@game-forge/i18n':
         specifier: workspace:*
         version: link:../../i18n
+      '@game-forge/resources':
+        specifier: workspace:*
+        version: link:../../resources
       '@game-forge/runtime':
         specifier: workspace:*
         version: link:../../runtime
@@ -193,7 +208,15 @@ importers:
 
   packages/platform: {}
 
+  packages/resources: {}
+
   packages/runtime: {}
+
+  packages/shared-resources:
+    dependencies:
+      '@game-forge/resources':
+        specifier: workspace:*
+        version: link:../resources
 
   packages/wallet/core: {}
 

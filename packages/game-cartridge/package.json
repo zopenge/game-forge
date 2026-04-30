@@ -6,6 +6,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@game-forge/resources": "workspace:*",
     "@game-forge/graphics": "workspace:*",
     "@game-forge/i18n": "workspace:*",
     "@game-forge/runtime": "workspace:*",

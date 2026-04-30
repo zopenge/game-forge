@@ -49,7 +49,8 @@ export const gameClientMessages = createTranslationCatalog({
     'lobby.wallet.empty': 'Connect a wallet account to inspect on-chain balances.',
     'lobby.error.assetIdRequired': 'Enter an asset ID before saving.',
     'lobby.error.quantityInvalid': 'Quantity must be a non-negative integer.',
-    'lobby.error.assetUpdateFailed': 'Unable to update the asset right now. Please try again.'
+    'lobby.error.assetUpdateFailed': 'Unable to update the asset right now. Please try again.',
+    'lobby.error.resourceLoadFailed': 'Unable to load game resources. Please try again.'
   },
   'zh-CN': {
     'common.authMethod.username': '用户名',
@@ -99,7 +100,8 @@ export const gameClientMessages = createTranslationCatalog({
     'lobby.wallet.empty': '连接钱包账户后即可查看链上余额。',
     'lobby.error.assetIdRequired': '请先输入资产 ID。',
     'lobby.error.quantityInvalid': '数量必须是非负整数。',
-    'lobby.error.assetUpdateFailed': '暂时无法更新资产，请稍后再试。'
+    'lobby.error.assetUpdateFailed': '暂时无法更新资产，请稍后再试。',
+    'lobby.error.resourceLoadFailed': '暂时无法加载游戏资源，请稍后再试。'
   }
 });
 

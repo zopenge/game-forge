@@ -1,3 +1,4 @@
+import type { ResourceManager, ResourceRecord } from '@game-forge/resources';
 import type { ThreeRenderScene } from '@game-forge/graphics';
 import type { LocaleCode, TranslationCatalogShape, TranslationParams } from '@game-forge/i18n';
 import type { RuntimeModule } from '@game-forge/runtime';
@@ -34,6 +35,7 @@ export interface GameCartridgeContext<messageKey extends string = string> {
     readonly walletAddress?: string;
     readonly walletChainId?: number;
   };
+  readonly resources: ResourceManager;
   readonly services: GameCartridgeServices;
   readonly walletAssets?: WalletAssetSnapshot;
 }
@@ -51,6 +53,7 @@ export interface GameCartridge<messageKey extends string = string> {
   readonly descriptionKey: messageKey;
   readonly id: string;
   readonly messages: GameCartridgeMessages<messageKey>;
+  readonly resources?: readonly ResourceRecord[];
   readonly tagKeys: readonly messageKey[];
   readonly themeColor: string;
   readonly titleKey: messageKey;

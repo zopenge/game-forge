@@ -12,6 +12,7 @@ export interface LobbyViewOptions {
     readonly quantity?: string | undefined;
   } | undefined;
   readonly assetErrorMessage?: string | undefined;
+  readonly gameResourceErrorMessage?: string | undefined;
   readonly gameCartridges: readonly LobbyGameCartridgeView[];
   readonly locale: LocaleCode;
   readonly selectedGameCartridgeId?: string | undefined;
@@ -38,6 +39,7 @@ export const renderLobbyView = ({
   assets,
   assetDraft,
   assetErrorMessage,
+  gameResourceErrorMessage,
   gameCartridges,
   locale,
   selectedGameCartridgeId,
@@ -138,6 +140,7 @@ export const renderLobbyView = ({
         <div class="lobby-actions">
           <button type="button" data-role="enter-game-button" ${selectedGameCartridgeId ? '' : 'disabled'}>${t('lobby.action.enterGame')}</button>
         </div>
+        <p data-role="game-resource-error" class="portal-error ${gameResourceErrorMessage ? '' : 'hidden'}">${gameResourceErrorMessage ?? ''}</p>
       </div>
     </section>
   `.trim();

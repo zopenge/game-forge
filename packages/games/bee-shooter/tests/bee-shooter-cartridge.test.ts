@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { PerspectiveCamera, Scene } from 'three';
 import type { WebGLRenderer } from 'three';
 
+import { createResourceManager } from '@game-forge/resources';
 import type { GameCartridgeContext } from '@game-forge/game-cartridge';
 
 import { beeShooterGameCartridge } from '../src/index';
@@ -22,9 +23,11 @@ const createContext = (): GameCartridgeContext => ({
     networking: {
       isAvailable: false
     }
-  }
+  },
+  resources: createResourceManager({
+    resources: beeShooterGameCartridge.resources ?? []
+  })
 });
-
 const createRenderScene = () => ({
   camera: new PerspectiveCamera(70, 1, 0.1, 100),
   renderer: {} as WebGLRenderer,
@@ -44,6 +47,7 @@ describe('bee-shooter-game-cartridge', () => {
       input: 'keyboard',
       networking: 'none'
     });
+    expect(beeShooterGameCartridge.resources?.every((resource) => resource.key.startsWith('bee-shooter.'))).toBe(true);
     expect(beeShooterGameCartridge.messages['en-US'][beeShooterGameCartridge.titleKey]).toBe('Bee Shooter');
     expect(beeShooterGameCartridge.messages['zh-CN'][beeShooterGameCartridge.titleKey]).toBe('小蜜蜂射击');
   });
@@ -69,5 +73,16 @@ describe('bee-shooter-game-cartridge', () => {
 
     teardown?.();
     expect(renderScene.scene.children.length).toBe(0);
+  });
+
+  test('can resolve declared resources through the cartridge context', () => {
+    const context = createContext();
+    const module = beeShooterGameCartridge.createModule(context);
+
+    expect(context.resources.resolve('bee-shooter.projectile-config')).toEqual(expect.objectContaining({
+      key: 'bee-shooter.projectile-config',
+      kind: 'json'
+    }));
+    expect(module).toBeDefined();
   });
 });

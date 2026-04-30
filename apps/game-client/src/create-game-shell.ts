@@ -1,7 +1,9 @@
+import { createResourceManager, type ResourceManager, type ResourceRecord } from '@game-forge/resources';
 import type { GameCartridge, GameCartridgeContext } from '@game-forge/game-cartridge';
 import { createGameCartridgeRegistry } from '@game-forge/game-cartridge';
 import type { I18nStore, LocaleCode } from '@game-forge/i18n';
 import type { RenderApp } from '@game-forge/runtime';
+import { sharedResources as defaultSharedResources } from '@game-forge/shared-resources';
 import type { BrowserWalletRegistry, WalletAssetSnapshot } from '@game-forge/wallet-core';
 import { createBrowserWalletRegistry } from '@game-forge/wallet-core';
 import { createEvmBrowserWalletAdapter } from '@game-forge/wallet-evm';
@@ -37,6 +39,8 @@ export interface GameShellOptions {
   readonly gameCartridges?: readonly GameCartridge[];
   readonly host: HTMLElement;
   readonly i18n?: I18nStore<typeof gameClientMessages>;
+  readonly resourceManagerFactory?: (resources: readonly ResourceRecord[]) => ResourceManager;
+  readonly sharedResources?: readonly ResourceRecord[];
   readonly walletClient?: WalletClient;
   readonly walletRegistry?: BrowserWalletRegistry;
 }
@@ -52,6 +56,8 @@ export const createGameShell = ({
   gameCartridges = defaultGameCartridges,
   host,
   i18n = createGameClientI18n(),
+  resourceManagerFactory = (resources) => createResourceManager({ resources }),
+  sharedResources = defaultSharedResources,
   walletRegistry = createBrowserWalletRegistry([createEvmBrowserWalletAdapter()]),
   walletClient = createWalletClient({
     apiClient,
@@ -66,6 +72,7 @@ export const createGameShell = ({
     quantity: ''
   };
   let currentAssetErrorMessage: string | undefined;
+  let currentGameResourceErrorMessage: string | undefined;
   let currentLoginErrorMessage: string | undefined;
   let currentUser: CurrentUser | undefined;
   let currentUsername = '';
@@ -99,6 +106,7 @@ export const createGameShell = ({
       quantity: ''
     };
     currentAssetErrorMessage = undefined;
+    currentGameResourceErrorMessage = undefined;
     currentLoginErrorMessage = undefined;
     currentUser = undefined;
     currentUsername = '';
@@ -195,6 +203,7 @@ export const createGameShell = ({
       assets: currentAssets,
       assetDraft: currentAssetDraft,
       assetErrorMessage: currentAssetErrorMessage,
+      gameResourceErrorMessage: currentGameResourceErrorMessage,
       gameCartridges: registry.list().map((cartridge) => ({
         capabilities: {
           graphics: cartridge.capabilities.graphics,
@@ -236,50 +245,67 @@ export const createGameShell = ({
     });
 
     enterGameButton?.addEventListener('click', () => {
-      const cartridge = selectedGameCartridgeId
-        ? registry.findById(selectedGameCartridgeId)
-        : undefined;
+      void (async () => {
+        const cartridge = selectedGameCartridgeId
+          ? registry.findById(selectedGameCartridgeId)
+          : undefined;
 
-      if (!cartridge) {
-        return;
-      }
+        if (!cartridge) {
+          return;
+        }
 
-      const player = {
-        authMethod: lobbyUser.authMethod,
-        userId: lobbyUser.userId,
-        username: lobbyUser.username,
-        ...(lobbyUser.walletAddress ? { walletAddress: lobbyUser.walletAddress } : {}),
-        ...(lobbyUser.walletChainId !== undefined ? { walletChainId: lobbyUser.walletChainId } : {})
-      } satisfies GameCartridgeContext['player'];
-      const cartridgeContext = {
-        assets: currentAssets,
-        i18n: {
-          locale,
-          t: (key: string, params?: Record<string, string | number>) => {
-            const template = translateCartridgeMessage(cartridge, key);
+        const resourceManager = resourceManagerFactory([
+          ...sharedResources,
+          ...(cartridge.resources ?? [])
+        ]);
 
-            if (!params) {
-              return template;
+        try {
+          await resourceManager.preload();
+          currentGameResourceErrorMessage = undefined;
+        } catch {
+          currentGameResourceErrorMessage = i18n.t('lobby.error.resourceLoadFailed');
+          renderLobby();
+          return;
+        }
+
+        const player = {
+          authMethod: lobbyUser.authMethod,
+          userId: lobbyUser.userId,
+          username: lobbyUser.username,
+          ...(lobbyUser.walletAddress ? { walletAddress: lobbyUser.walletAddress } : {}),
+          ...(lobbyUser.walletChainId !== undefined ? { walletChainId: lobbyUser.walletChainId } : {})
+        } satisfies GameCartridgeContext['player'];
+        const cartridgeContext = {
+          assets: currentAssets,
+          i18n: {
+            locale,
+            t: (key: string, params?: Record<string, string | number>) => {
+              const template = translateCartridgeMessage(cartridge, key);
+
+              if (!params) {
+                return template;
+              }
+
+              return template.replace(/\{(\w+)\}/g, (_match, token: string) => {
+                const value = params[token];
+                return value === undefined ? `{${token}}` : String(value);
+              });
             }
+          },
+          player,
+          resources: resourceManager,
+          services: {
+            networking: {
+              isAvailable: false
+            }
+          },
+          ...(currentWalletAssets ? { walletAssets: currentWalletAssets } : {})
+        } satisfies GameCartridgeContext;
 
-            return template.replace(/\{(\w+)\}/g, (_match, token: string) => {
-              const value = params[token];
-              return value === undefined ? `{${token}}` : String(value);
-            });
-          }
-        },
-        player,
-        services: {
-          networking: {
-            isAvailable: false
-          }
-        },
-        ...(currentWalletAssets ? { walletAssets: currentWalletAssets } : {})
-      } satisfies GameCartridgeContext;
-
-      host.innerHTML = '';
-      gameApp = gameAppFactory(host, cartridge, cartridgeContext);
-      gameApp.start();
+        host.innerHTML = '';
+        gameApp = gameAppFactory(host, cartridge, cartridgeContext);
+        gameApp.start();
+      })();
     });
 
     assetIdInput?.addEventListener('input', () => {
@@ -317,6 +343,7 @@ export const createGameShell = ({
           quantity: ''
         };
         currentAssetErrorMessage = undefined;
+        currentGameResourceErrorMessage = undefined;
         currentAssets = await apiClient.getAssets(token!);
         renderLobby();
       } catch (error) {

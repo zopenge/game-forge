@@ -1,4 +1,5 @@
-import { createTranslationCatalog } from '@game-forge/i18n';
+﻿import { createTranslationCatalog } from '@game-forge/i18n';
+import type { ResourceRecord } from '@game-forge/resources';
 import type { GameCartridge, GameCartridgeContext } from '@game-forge/game-cartridge';
 import type { ThreeRenderScene } from '@game-forge/graphics';
 import type { RuntimeModule } from '@game-forge/runtime';
@@ -31,6 +32,21 @@ export const beeShooterMessages = createTranslationCatalog({
 
 export type BeeShooterMessageKey = keyof typeof beeShooterMessages['en-US'];
 
+export const beeShooterResources = [
+  {
+    key: 'bee-shooter.player-marker',
+    kind: 'image',
+    preload: true,
+    uri: new URL('../assets/player-marker.svg', import.meta.url).href
+  },
+  {
+    key: 'bee-shooter.projectile-config',
+    kind: 'json',
+    priority: 'critical',
+    uri: new URL('../assets/projectile-config.json', import.meta.url).href
+  }
+] satisfies readonly ResourceRecord[];
+
 interface Projectile {
   readonly mesh: Mesh<SphereGeometry, MeshStandardMaterial>;
   readonly velocityY: number;
@@ -59,6 +75,7 @@ export const createBeeShooterModule = (
 ): RuntimeModule<ThreeRenderScene> => {
   const root = new Group();
   root.name = context.i18n.t('bee-shooter.title');
+  root.userData.resourceUri = context.resources.resolve('bee-shooter.projectile-config')?.uri;
   const projectiles: Projectile[] = [];
   const enemies: Enemy[] = [];
   let player: Mesh<BoxGeometry, MeshStandardMaterial> | undefined;
@@ -211,6 +228,7 @@ export const beeShooterGameCartridge: GameCartridge<BeeShooterMessageKey> = {
   descriptionKey: 'bee-shooter.description',
   id: 'bee-shooter',
   messages: beeShooterMessages,
+  resources: beeShooterResources,
   tagKeys: ['bee-shooter.tag.arcade', 'bee-shooter.tag.shooter'],
   themeColor: '#f5c542',
   titleKey: 'bee-shooter.title'

@@ -27,6 +27,11 @@ const createCartridge = (id: string): GameCartridge => ({
       'game.title': '标题'
     }
   },
+  resources: [{
+    key: `${id}.config`,
+    kind: 'json',
+    uri: `/${id}/config.json`
+  }],
   tagKeys: ['game.tag'],
   themeColor: '#69d1ff',
   titleKey: 'game.title'
@@ -40,6 +45,7 @@ describe('create-game-cartridge-registry', () => {
 
     expect(registry.list()).toEqual([beeShooter, fallingBlocks]);
     expect(registry.findById('falling-blocks')).toBe(fallingBlocks);
+    expect(registry.findById('bee-shooter')?.resources?.[0]?.key).toBe('bee-shooter.config');
   });
 
   test('returns undefined for an unknown cartridge id', () => {

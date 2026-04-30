@@ -1,4 +1,5 @@
-import { createTranslationCatalog } from '@game-forge/i18n';
+﻿import { createTranslationCatalog } from '@game-forge/i18n';
+import type { ResourceRecord } from '@game-forge/resources';
 import type { GameCartridge, GameCartridgeContext } from '@game-forge/game-cartridge';
 import type { ThreeRenderScene } from '@game-forge/graphics';
 import type { RuntimeModule } from '@game-forge/runtime';
@@ -28,6 +29,21 @@ export const fallingBlocksMessages = createTranslationCatalog({
 });
 
 export type FallingBlocksMessageKey = keyof typeof fallingBlocksMessages['en-US'];
+
+export const fallingBlocksResources = [
+  {
+    key: 'falling-blocks.block-pattern',
+    kind: 'image',
+    preload: true,
+    uri: new URL('../assets/block-pattern.svg', import.meta.url).href
+  },
+  {
+    key: 'falling-blocks.board-config',
+    kind: 'json',
+    priority: 'critical',
+    uri: new URL('../assets/board-config.json', import.meta.url).href
+  }
+] satisfies readonly ResourceRecord[];
 
 export interface FallingBlocksCell {
   readonly x: number;
@@ -165,6 +181,7 @@ export const createFallingBlocksModule = (
 ): RuntimeModule<ThreeRenderScene> => {
   const root = new Group();
   root.name = context.i18n.t('falling-blocks.title');
+  root.userData.resourceUri = context.resources.resolve('falling-blocks.board-config')?.uri;
   const state = createFallingBlocksState();
   const blockGeometry = new BoxGeometry(0.18, 0.18, 0.08);
   const activeMaterial = new MeshStandardMaterial({
@@ -245,6 +262,7 @@ export const fallingBlocksGameCartridge: GameCartridge<FallingBlocksMessageKey> 
   descriptionKey: 'falling-blocks.description',
   id: 'falling-blocks',
   messages: fallingBlocksMessages,
+  resources: fallingBlocksResources,
   tagKeys: ['falling-blocks.tag.puzzle', 'falling-blocks.tag.grid'],
   themeColor: '#69d1ff',
   titleKey: 'falling-blocks.title'

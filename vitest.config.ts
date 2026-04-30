@@ -16,7 +16,9 @@ export default defineConfig({
       '@game-forge/identity': resolve(__dirname, 'packages/identity/src/index.ts'),
       '@game-forge/input': resolve(__dirname, 'packages/input/src/index.ts'),
       '@game-forge/platform': resolve(__dirname, 'packages/platform/src/index.ts'),
+      '@game-forge/resources': resolve(__dirname, 'packages/resources/src/index.ts'),
       '@game-forge/runtime': resolve(__dirname, 'packages/runtime/src/index.ts'),
+      '@game-forge/shared-resources': resolve(__dirname, 'packages/shared-resources/src/index.ts'),
       '@game-forge/wallet-core': resolve(__dirname, 'packages/wallet/core/src/index.ts'),
       '@game-forge/wallet-evm': resolve(__dirname, 'packages/wallet/evm/src/index.ts')
     }

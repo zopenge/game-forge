@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
+import type { ResourceManager, ResourceRecord } from '@game-forge/resources';
 import type { GameCartridgeContext } from '@game-forge/game-cartridge';
 
 import { createGameShell } from '../src/create-game-shell';
@@ -90,6 +91,34 @@ const flushPromises = async () => {
   await Promise.resolve();
   await new Promise((resolve) => setTimeout(resolve, 0));
 };
+
+const createResourceManagerStub = (
+  overrides: Partial<ResourceManager> = {}
+): ResourceManager => ({
+  getState: overrides.getState ?? ((key) => ({
+    key,
+    status: 'idle'
+  })),
+  list: overrides.list ?? (() => []),
+  load: overrides.load ?? (async <T = unknown>() => undefined as T),
+  preload: overrides.preload ?? (async () => undefined),
+  resolve: overrides.resolve ?? (() => undefined),
+  unload: overrides.unload ?? (() => undefined)
+});
+
+const testCartridgeResources: ResourceRecord[] = [{
+  key: 'test-cartridge.config',
+  kind: 'json',
+  priority: 'critical',
+  uri: '/test-cartridge/config.json'
+}];
+
+const sharedTestResources: ResourceRecord[] = [{
+  key: 'shared.ui-click',
+  kind: 'audio',
+  preload: true,
+  uri: '/shared/ui-click.txt'
+}];
 
 describe('create-game-shell', () => {
   beforeEach(() => {
@@ -256,11 +285,13 @@ describe('create-game-shell', () => {
         start,
         stop: vi.fn()
       }),
-      host
+      host,
+      resourceManagerFactory: () => createResourceManagerStub()
     });
 
     await shell.start();
     host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+    await flushPromises();
     shell.resize();
 
     expect(start).toHaveBeenCalledOnce();
@@ -317,11 +348,13 @@ describe('create-game-shell', () => {
             'game.title': '测试卡带'
           }
         },
+        resources: testCartridgeResources,
         tagKeys: ['game.tag'],
         themeColor: '#69d1ff',
         titleKey: 'game.title'
       }],
-      host
+      host,
+      resourceManagerFactory: () => createResourceManagerStub()
     });
 
     await shell.start();
@@ -331,6 +364,7 @@ describe('create-game-shell', () => {
 
     host.querySelector<HTMLButtonElement>('[data-role="game-cartridge-option"]')!.click();
     host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+    await flushPromises();
 
     expect(start).toHaveBeenCalledOnce();
     expect(createModule).toHaveBeenCalledWith(expect.objectContaining({
@@ -345,12 +379,138 @@ describe('create-game-shell', () => {
         authMethod: 'username',
         username: 'pilot'
       }),
+      resources: expect.any(Object),
       services: {
         networking: {
           isAvailable: false
         }
       }
     }));
+  });
+
+  test('preloads shared and selected cartridge resources before starting the game', async () => {
+    const host = document.createElement('div');
+    const start = vi.fn();
+    const preload = vi.fn(async () => undefined);
+    const resourceManager = createResourceManagerStub({
+      preload,
+      resolve: (key) => [...sharedTestResources, ...testCartridgeResources].find((resource) => resource.key === key)
+    });
+    const resourceManagerFactory = vi.fn(() => resourceManager);
+    const shell = createGameShell({
+      apiClient: createApiClientStub(),
+      authStorage: createMemoryAuthStorage('token-1'),
+      gameAppFactory: (_host, _cartridge, context) => {
+        expect(context.resources.resolve('shared.ui-click')).toEqual(sharedTestResources[0]);
+        expect(context.resources.resolve('test-cartridge.config')).toEqual(testCartridgeResources[0]);
+
+        return {
+          isRunning: () => true,
+          resize: vi.fn(),
+          start,
+          stop: vi.fn()
+        };
+      },
+      gameCartridges: [{
+        capabilities: {
+          graphics: 'three',
+          input: 'keyboard',
+          networking: 'none'
+        },
+        createModule: () => ({
+          setup: () => undefined,
+          update: () => undefined
+        }),
+        descriptionKey: 'game.description',
+        id: 'test-cartridge',
+        messages: {
+          'en-US': {
+            'game.description': 'A test cartridge',
+            'game.tag': 'Arcade',
+            'game.title': 'Test Cartridge'
+          },
+          'zh-CN': {
+            'game.description': '测试卡带',
+            'game.tag': '街机',
+            'game.title': '测试卡带'
+          }
+        },
+        resources: testCartridgeResources,
+        tagKeys: ['game.tag'],
+        themeColor: '#69d1ff',
+        titleKey: 'game.title'
+      }],
+      host,
+      resourceManagerFactory,
+      sharedResources: sharedTestResources
+    });
+
+    await shell.start();
+    host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+    await flushPromises();
+
+    expect(resourceManagerFactory).toHaveBeenCalledWith([...sharedTestResources, ...testCartridgeResources]);
+    expect(preload).toHaveBeenCalledOnce();
+    expect(start).toHaveBeenCalledOnce();
+  });
+
+  test('keeps the user in the lobby when resource preload fails', async () => {
+    const host = document.createElement('div');
+    const start = vi.fn();
+    const shell = createGameShell({
+      apiClient: createApiClientStub(),
+      authStorage: createMemoryAuthStorage('token-1'),
+      gameAppFactory: () => ({
+        isRunning: () => true,
+        resize: vi.fn(),
+        start,
+        stop: vi.fn()
+      }),
+      gameCartridges: [{
+        capabilities: {
+          graphics: 'three',
+          input: 'keyboard',
+          networking: 'none'
+        },
+        createModule: () => ({
+          setup: () => undefined,
+          update: () => undefined
+        }),
+        descriptionKey: 'game.description',
+        id: 'test-cartridge',
+        messages: {
+          'en-US': {
+            'game.description': 'A test cartridge',
+            'game.tag': 'Arcade',
+            'game.title': 'Test Cartridge'
+          },
+          'zh-CN': {
+            'game.description': '测试卡带',
+            'game.tag': '街机',
+            'game.title': '测试卡带'
+          }
+        },
+        resources: testCartridgeResources,
+        tagKeys: ['game.tag'],
+        themeColor: '#69d1ff',
+        titleKey: 'game.title'
+      }],
+      host,
+      resourceManagerFactory: () => createResourceManagerStub({
+        preload: async () => {
+          throw new Error('resource missing');
+        }
+      }),
+      sharedResources: sharedTestResources
+    });
+
+    await shell.start();
+    host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+    await flushPromises();
+
+    expect(start).not.toHaveBeenCalled();
+    expect(host.textContent).toContain('Unable to load game resources');
+    expect(host.textContent).toContain('Test Cartridge');
   });
 
   test('lobby cartridge metadata follows locale changes', async () => {

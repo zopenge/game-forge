@@ -79,6 +79,8 @@ The repository currently treats ESLint warnings as failures through the root lin
 ### Workspace Imports
 
 - shared package imports use workspace aliases such as `@game-forge/runtime`
+- generic resource loading uses `@game-forge/resources`
+- shared bundled resources use `@game-forge/shared-resources`
 - localization primitives use the shared `@game-forge/i18n` workspace package
 - game cartridges use `@game-forge/game-cartridge`; concrete built-in games live under `packages/games/*`
 - wallet packages use aliases such as `@game-forge/wallet-core` and `@game-forge/wallet-evm`
@@ -96,7 +98,19 @@ The repository currently treats ESLint warnings as failures through the root lin
 - the SDK package is `packages/game-cartridge` with package name `@game-forge/game-cartridge`
 - concrete built-in game packages live under `packages/games/*`
 - cartridges should declare capabilities for graphics, input, and future networking
+- cartridges should declare private resources with keys prefixed by the cartridge id
+- cartridge-private resource files belong under `packages/games/<game-id>/assets/`
+- cartridge code should read resources through `GameCartridgeContext.resources`
 - v1 networking is only a reserved service location; cartridges should not implement WebRTC or matchmaking directly
+
+### Resource Loading
+
+- `@game-forge/resources` owns `ResourceManager` and generic resource loading for image, audio, JSON, text, and binary files
+- resource keys should be namespaced, such as `shared.ui-click` or `bee-shooter.projectile-config`
+- shared resources belong in `packages/shared-resources`, not inside a game package
+- use `new URL('../assets/file.ext', import.meta.url).href` for bundled resource URIs
+- v1 resource loading is renderer-agnostic; Three textures and models should be loaded by graphics adapters or game code from resolved URIs
+- launch-critical resources should set `preload: true` or `priority: 'critical'`
 
 ### Renderer Boundary
 
