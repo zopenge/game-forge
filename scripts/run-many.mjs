@@ -6,6 +6,8 @@ import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { resolveManagedCommands } from './run-many-ports.mjs';
+
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(scriptDirectory, '..');
 
@@ -17,14 +19,15 @@ const managedCommands = [
   },
   {
     args: ['--filter', '@game-forge/game-client', 'dev'],
+    backendUrlEnvName: 'GAME_FORGE_BACKEND_URL',
     name: 'game-client',
-    openUrl: 'http://127.0.0.1:5173/',
+    openPath: '/',
     port: 5173
   },
   {
     args: ['--filter', '@game-forge/admin-panel', 'dev'],
     name: 'admin-panel',
-    openUrl: 'http://127.0.0.1:5174/',
+    openPath: '/',
     port: 5174
   }
 ];
@@ -168,21 +171,30 @@ const shutdown = async (exitCode = 0) => {
   process.exit(exitCode);
 };
 
-for (const command of managedCommands) {
-  if (await isPortInUse(command.port)) {
-    console.error(`Port ${command.port} is already in use. Stop the existing service before running pnpm dev.`);
-    process.exit(1);
+const resolvedCommands = await resolveManagedCommands(managedCommands, isPortInUse);
+
+for (const command of resolvedCommands) {
+  if (command.resolvedPort !== command.port) {
+    console.warn(`${command.name} default port ${command.port} is in use; using ${command.resolvedPort} instead.`);
   }
 }
 
-for (const command of managedCommands) {
+for (const command of resolvedCommands) {
   const child = process.platform === 'win32'
     ? spawn('cmd.exe', ['/d', '/c', 'pnpm', ...command.args], {
       cwd: workspaceRoot,
+      env: {
+        ...process.env,
+        ...command.env
+      },
       stdio: ['ignore', 'pipe', 'pipe']
     })
     : spawn('pnpm', command.args, {
       cwd: workspaceRoot,
+      env: {
+        ...process.env,
+        ...command.env
+      },
       stdio: ['ignore', 'pipe', 'pipe']
     });
 
@@ -191,12 +203,12 @@ for (const command of managedCommands) {
 
   child.stdout.on('data', writeStdout);
   child.stderr.on('data', writeStderr);
-  void waitForPort(command.port).then((isReady) => {
+  void waitForPort(command.resolvedPort).then((isReady) => {
     if (!isReady || shuttingDown) {
       return;
     }
 
-    console.log(`${command.name} is ready on port ${command.port}.`);
+    console.log(`${command.name} is ready on port ${command.resolvedPort}.`);
 
     if (command.openUrl) {
       openBrowser(command.openUrl);

@@ -6,6 +6,7 @@
 
 The project is intentionally split into narrow packages so that runtime behavior, rendering, wallet integration, platform access, and application code stay loosely coupled.
 Game code is packaged as game cartridges so the browser client can select a game while each game keeps its own source, tests, assets, and `translations/*.json` files.
+Package public APIs prefer `interface` types plus `createX()` factories so callers depend on stable contracts while implementation state stays private.
 
 ## Top-Level Layout
 
@@ -85,6 +86,7 @@ Owns application lifecycle abstractions.
 - `RenderBackend`
 - `RuntimeModule`
 - frame timing and resize handling
+- stop-request lifecycle callbacks through `RuntimeModule.onStopRequested()` and `RenderApp.requestStop()`
 
 This package is the stable boundary between applications and rendering backends.
 
@@ -105,9 +107,10 @@ Owns the game cartridge SDK shared by the platform and individual games.
 - `GameCartridge`
 - `GameCartridgeContext`
 - `GameCartridgeRegistry`
+- `createGameCartridgeRegistry()`
 - game capability declarations for graphics, input, and future networking
 
-The package is singular because it defines the protocol for one cartridge. Concrete games live under `packages/games/*`.
+The package is singular because it defines the protocol for one cartridge. Concrete games live under `packages/games/*`. Its public entrypoint re-exports focused `types` and `registry` modules.
 
 ### `packages/games/bee-shooter`
 
@@ -162,6 +165,8 @@ Owns shared localization primitives.
 - translation catalogs and key-shape validation
 - runtime translation helpers for browser apps
 
+The public entrypoint re-exports focused `locale`, `catalog`, and `store` modules while preserving factory-style construction through `createTranslationCatalog()` and `createI18nStore()`.
+
 ### `packages/device`
 
 Owns device and viewport description helpers.
@@ -210,6 +215,7 @@ Owns environment-facing platform helpers.
 - When the player starts a cartridge, the shell creates `GameCartridgeContext` with player identity, local assets, wallet assets, i18n, resources, and platform services.
 - Before launch, the shell merges `@game-forge/shared-resources` records with the selected cartridge's private resources and preloads required resources.
 - If resource preload fails, the player stays in the lobby and sees a localized load error.
+- During game play, the shell owns platform navigation such as return-to-lobby and passes stop requests to the game through `RuntimeModule.onStopRequested()`.
 - v1 supports `scene-graph-3d` cartridges through `RuntimeModule<GraphicsRenderScene>`.
 - v1 exposes `services.networking.isAvailable === false` as the reserved location for later networking support.
 
@@ -221,6 +227,7 @@ Owns environment-facing platform helpers.
 - Cartridges expose resource records on `GameCartridge.resources`, generated from manifest JSON.
 - Games access resources through `context.resources`, not by hardcoding platform paths.
 - v1 manifest records contain only `key`, `path`, and optional `preload: true`; resource kind is inferred from file extension.
+- Bundled packages pass a generated asset URL map into `createResourceRecordsFromManifests()` so manifest paths resolve to packaged URLs instead of dynamic source-relative paths.
 - `@game-forge/resources` does not depend on renderer packages; games can pass resolved URLs to graphics abstractions when needed.
 
 ## Multiplayer Extension Points

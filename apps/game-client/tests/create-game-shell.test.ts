@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { ResourceManager, ResourceRecord } from '@game-forge/resources';
 import type { GameCartridgeContext } from '@game-forge/game-cartridge';
+import type { RenderApp } from '@game-forge/runtime';
 
 import { createGameShell } from '../src/create-game-shell';
 import type { ApiClient, AssetEntry, CurrentUser, LoginResponse } from '../src/api-client';
@@ -120,6 +121,16 @@ const sharedTestResources: ResourceRecord[] = [{
   uri: '/shared/ui-click.txt'
 }];
 
+const createRenderAppStub = (overrides: Partial<RenderApp> = {}): RenderApp => ({
+  isRunning: overrides.isRunning ?? (() => true),
+  requestStop: overrides.requestStop ?? (async () => ({
+    status: 'stopped'
+  })),
+  resize: overrides.resize ?? vi.fn(),
+  start: overrides.start ?? vi.fn(),
+  stop: overrides.stop ?? vi.fn()
+});
+
 describe('create-game-shell', () => {
   beforeEach(() => {
     document.head.innerHTML = '';
@@ -159,6 +170,8 @@ describe('create-game-shell', () => {
 
     expect(authStorage.readToken()).toBe('token-1');
     expect(host.textContent).toContain('Welcome, pilot');
+    expect(host.querySelector('[data-role="game-cartridge-list"]')).not.toBeNull();
+    expect(host.querySelector('[data-role="enter-game-button"]')).not.toBeNull();
   });
 
   test('invalid stored token falls back to login view', async () => {
@@ -276,15 +289,18 @@ describe('create-game-shell', () => {
     const host = document.createElement('div');
     const resize = vi.fn();
     const start = vi.fn();
+    let gameHost: HTMLElement | undefined;
     const shell = createGameShell({
       apiClient: createApiClientStub(),
       authStorage: createMemoryAuthStorage('token-1'),
-      gameAppFactory: () => ({
-        isRunning: () => true,
-        resize,
-        start,
-        stop: vi.fn()
-      }),
+      gameAppFactory: (nextGameHost) => {
+        gameHost = nextGameHost;
+
+        return createRenderAppStub({
+          resize,
+          start
+        });
+      },
       host,
       resourceManagerFactory: () => createResourceManagerStub()
     });
@@ -296,6 +312,100 @@ describe('create-game-shell', () => {
 
     expect(start).toHaveBeenCalledOnce();
     expect(resize).toHaveBeenCalledOnce();
+    expect(host.querySelector('[data-role="game-session"]')).not.toBeNull();
+    expect(gameHost?.dataset.role).toBe('game-stage');
+    expect(host.querySelector('[data-role="return-to-lobby-button"]')).not.toBeNull();
+  });
+
+  test('platform return button requests a stop and returns to the lobby', async () => {
+    const host = document.createElement('div');
+    const requestStop = vi.fn(async () => ({
+      status: 'stopped' as const
+    }));
+    const shell = createGameShell({
+      apiClient: createApiClientStub(),
+      authStorage: createMemoryAuthStorage('token-1'),
+      gameAppFactory: () => createRenderAppStub({
+        requestStop
+      }),
+      host,
+      resourceManagerFactory: () => createResourceManagerStub()
+    });
+
+    await shell.start();
+    host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+    await flushPromises();
+    host.querySelector<HTMLButtonElement>('[data-role="return-to-lobby-button"]')!.click();
+    await flushPromises();
+
+    expect(requestStop).toHaveBeenCalledWith({
+      reason: 'return-to-lobby',
+      source: 'platform-button'
+    });
+    expect(host.querySelector('[data-role="game-cartridge-list"]')).not.toBeNull();
+  });
+
+  test('keyboard escape and browser back request game stops with their sources', async () => {
+    const host = document.createElement('div');
+    const requestStop = vi.fn(async () => ({
+      status: 'stopped' as const
+    }));
+    const shell = createGameShell({
+      apiClient: createApiClientStub(),
+      authStorage: createMemoryAuthStorage('token-1'),
+      gameAppFactory: () => createRenderAppStub({
+        requestStop
+      }),
+      host,
+      resourceManagerFactory: () => createResourceManagerStub()
+    });
+
+    await shell.start();
+    host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+    await flushPromises();
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Escape'
+    }));
+    await flushPromises();
+    host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+    await flushPromises();
+    window.dispatchEvent(new Event('popstate'));
+    await flushPromises();
+
+    expect(requestStop).toHaveBeenNthCalledWith(1, {
+      reason: 'return-to-lobby',
+      source: 'keyboard'
+    });
+    expect(requestStop).toHaveBeenNthCalledWith(2, {
+      reason: 'return-to-lobby',
+      source: 'browser-back'
+    });
+  });
+
+  test('cancelled game stop keeps the user in the game session', async () => {
+    const host = document.createElement('div');
+    const shell = createGameShell({
+      apiClient: createApiClientStub(),
+      authStorage: createMemoryAuthStorage('token-1'),
+      gameAppFactory: () => createRenderAppStub({
+        requestStop: async () => ({
+          message: 'Save is still running.',
+          status: 'cancelled'
+        })
+      }),
+      host,
+      resourceManagerFactory: () => createResourceManagerStub()
+    });
+
+    await shell.start();
+    host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+    await flushPromises();
+    host.querySelector<HTMLButtonElement>('[data-role="return-to-lobby-button"]')!.click();
+    await flushPromises();
+
+    expect(host.querySelector('[data-role="game-session"]')).not.toBeNull();
+    expect(host.textContent).toContain('Save is still running.');
+    expect(host.querySelector('[data-role="game-cartridge-list"]')).toBeNull();
   });
 
   test('lobby renders game cartridges and starts the selected cartridge with context', async () => {
@@ -320,12 +430,9 @@ describe('create-game-shell', () => {
       gameAppFactory: (_host, cartridge, context) => {
         createModule(context);
 
-        return {
-          isRunning: () => true,
-          resize: vi.fn(),
-          start,
-          stop: vi.fn()
-        };
+        return createRenderAppStub({
+          start
+        });
       },
       gameCartridges: [{
         capabilities: {
@@ -404,12 +511,9 @@ describe('create-game-shell', () => {
         expect(context.resources.resolve('shared.ui-click')).toEqual(sharedTestResources[0]);
         expect(context.resources.resolve('test-cartridge.config')).toEqual(testCartridgeResources[0]);
 
-        return {
-          isRunning: () => true,
-          resize: vi.fn(),
-          start,
-          stop: vi.fn()
-        };
+        return createRenderAppStub({
+          start
+        });
       },
       gameCartridges: [{
         capabilities: {
@@ -460,11 +564,8 @@ describe('create-game-shell', () => {
     const shell = createGameShell({
       apiClient: createApiClientStub(),
       authStorage: createMemoryAuthStorage('token-1'),
-      gameAppFactory: () => ({
-        isRunning: () => true,
-        resize: vi.fn(),
-        start,
-        stop: vi.fn()
+      gameAppFactory: () => createRenderAppStub({
+        start
       }),
       gameCartridges: [{
         capabilities: {

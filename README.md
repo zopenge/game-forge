@@ -23,7 +23,7 @@ This starts:
 - game client on `http://127.0.0.1:5173`
 - admin panel on `http://127.0.0.1:5174`
 
-The root development runner checks for port conflicts before startup, opens browser pages when services are ready, and lets you stop the whole stack with `Ctrl+C`.
+The root development runner prefers these default ports, automatically moves a service to the next available port when a default is busy, opens browser pages when services are ready, and lets you stop the whole stack with `Ctrl+C`.
 
 ## Documentation
 

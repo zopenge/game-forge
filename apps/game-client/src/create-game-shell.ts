@@ -2,7 +2,7 @@ import { createResourceManager, type ResourceManager, type ResourceRecord } from
 import type { GameCartridge, GameCartridgeContext } from '@game-forge/game-cartridge';
 import { createGameCartridgeRegistry } from '@game-forge/game-cartridge';
 import type { I18nStore, LocaleCode } from '@game-forge/i18n';
-import type { RenderApp } from '@game-forge/runtime';
+import type { RenderApp, RuntimeStopReason, RuntimeStopRequest, RuntimeStopSource } from '@game-forge/runtime';
 import { sharedResources as defaultSharedResources } from '@game-forge/shared-resources';
 import type { BrowserWalletRegistry, WalletAssetSnapshot } from '@game-forge/wallet-core';
 import { createBrowserWalletRegistry } from '@game-forge/wallet-core';
@@ -20,6 +20,7 @@ import type { gameClientMessages } from './i18n/game-client-messages';
 import { mapGameClientError } from './i18n/map-game-client-error';
 import type { WalletClient } from './wallet-client';
 import { createWalletClient } from './wallet-client';
+import { renderGameSessionView } from './views/game-session-view';
 import { renderLobbyView } from './views/lobby-view';
 import { renderLoginView } from './views/login-view';
 
@@ -73,6 +74,7 @@ export const createGameShell = ({
   };
   let currentAssetErrorMessage: string | undefined;
   let currentGameResourceErrorMessage: string | undefined;
+  let currentGameStopErrorMessage: string | undefined;
   let currentLoginErrorMessage: string | undefined;
   let currentUser: CurrentUser | undefined;
   let currentUsername = '';
@@ -80,6 +82,7 @@ export const createGameShell = ({
   let currentWalletAssets: WalletAssetSnapshot | undefined;
   let gameApp: RenderApp | undefined;
   let selectedGameCartridgeId = gameCartridges[0]?.id;
+  let stopGameSessionListeners: () => void = () => undefined;
   let stopWalletAccountListener: () => void = () => undefined;
   let stopWalletChainListener: () => void = () => undefined;
   let token = authStorage.readToken();
@@ -97,6 +100,136 @@ export const createGameShell = ({
     stopWalletChainListener = () => undefined;
   };
 
+  const resetGameSessionListeners = () => {
+    stopGameSessionListeners();
+    stopGameSessionListeners = () => undefined;
+  };
+
+  const showGameStopError = (message: string) => {
+    currentGameStopErrorMessage = message;
+    const errorElement = host.querySelector<HTMLElement>('[data-role="game-session-error"]');
+
+    if (!errorElement) {
+      return;
+    }
+
+    errorElement.textContent = message;
+    errorElement.classList.remove('hidden');
+  };
+
+  const forceStopGame = () => {
+    resetGameSessionListeners();
+    gameApp?.stop();
+    gameApp = undefined;
+    currentGameStopErrorMessage = undefined;
+  };
+
+  const requestGameStop = async (request: RuntimeStopRequest) => {
+    if (!gameApp) {
+      return {
+        status: 'stopped'
+      } as const;
+    }
+
+    let result;
+
+    try {
+      result = await gameApp.requestStop(request);
+    } catch {
+      const message = i18n.t('game.error.exitFailed');
+      showGameStopError(message);
+
+      return {
+        message,
+        status: 'cancelled'
+      } as const;
+    }
+
+    if (result.status === 'cancelled') {
+      showGameStopError(result.message ?? i18n.t('game.error.exitCancelled'));
+      return result;
+    }
+
+    resetGameSessionListeners();
+    gameApp = undefined;
+    currentGameStopErrorMessage = undefined;
+    renderLobby();
+
+    return result;
+  };
+
+  const requestReturnToLobby = async (source: RuntimeStopSource) => {
+    await requestGameStop({
+      reason: 'return-to-lobby',
+      source
+    });
+  };
+
+  const requestSessionGameStop = async (reason: RuntimeStopReason) => {
+    if (!gameApp) {
+      return;
+    }
+
+    try {
+      await gameApp.requestStop({
+        reason,
+        source: 'session'
+      });
+    } catch {
+      // Session teardown must continue even if a cartridge fails while saving.
+    }
+
+    forceStopGame();
+  };
+
+  const bindGameSessionControls = () => {
+    resetGameSessionListeners();
+
+    const returnButton = host.querySelector<HTMLButtonElement>('[data-role="return-to-lobby-button"]');
+    const handleReturnButtonClick = () => {
+      void requestReturnToLobby('platform-button');
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      void requestReturnToLobby('keyboard');
+    };
+    const handlePopState = () => {
+      void requestReturnToLobby('browser-back');
+    };
+
+    returnButton?.addEventListener('click', handleReturnButtonClick);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('popstate', handlePopState);
+
+    stopGameSessionListeners = () => {
+      returnButton?.removeEventListener('click', handleReturnButtonClick);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  };
+
+  const renderGameSession = () => {
+    host.innerHTML = renderGameSessionView({
+      errorMessage: currentGameStopErrorMessage,
+      t: i18n.t
+    });
+    bindGameSessionControls();
+
+    try {
+      window.history.pushState({
+        gameForgeGameSession: true
+      }, '', window.location.href);
+    } catch {
+      // Some embedded hosts may not allow history mutation.
+    }
+
+    return host.querySelector<HTMLElement>('[data-role="game-stage"]');
+  };
+
   const clearSession = () => {
     authStorage.clearToken();
     token = null;
@@ -107,13 +240,13 @@ export const createGameShell = ({
     };
     currentAssetErrorMessage = undefined;
     currentGameResourceErrorMessage = undefined;
+    currentGameStopErrorMessage = undefined;
     currentLoginErrorMessage = undefined;
     currentUser = undefined;
     currentUsername = '';
     currentWalletErrorMessage = undefined;
     currentWalletAssets = undefined;
-    gameApp?.stop();
-    gameApp = undefined;
+    forceStopGame();
     selectedGameCartridgeId = gameCartridges[0]?.id;
     resetWalletListeners();
   };
@@ -180,8 +313,15 @@ export const createGameShell = ({
       showLogin(i18n.t('auth.error.walletSessionChanged'));
     };
 
-    stopWalletAccountListener = walletClient.onAccountsChanged(invalidateWalletSession);
-    stopWalletChainListener = walletClient.onChainChanged(invalidateWalletSession);
+    const invalidateWalletGameSession = () => {
+      void (async () => {
+        await requestSessionGameStop('wallet-session-changed');
+        invalidateWalletSession();
+      })();
+    };
+
+    stopWalletAccountListener = walletClient.onAccountsChanged(invalidateWalletGameSession);
+    stopWalletChainListener = walletClient.onChainChanged(invalidateWalletGameSession);
   };
 
   const renderLobby = () => {
@@ -302,8 +442,16 @@ export const createGameShell = ({
           ...(currentWalletAssets ? { walletAssets: currentWalletAssets } : {})
         } satisfies GameCartridgeContext;
 
-        host.innerHTML = '';
-        gameApp = gameAppFactory(host, cartridge, cartridgeContext);
+        currentGameStopErrorMessage = undefined;
+        const gameHost = renderGameSession();
+
+        if (!gameHost) {
+          currentGameStopErrorMessage = i18n.t('game.error.exitFailed');
+          renderLobby();
+          return;
+        }
+
+        gameApp = gameAppFactory(gameHost, cartridge, cartridgeContext);
         gameApp.start();
       })();
     });

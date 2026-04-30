@@ -152,6 +152,51 @@ button[disabled] {
   display: none;
 }
 
+.game-session {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #020814;
+}
+
+.game-stage {
+  min-height: 100vh;
+}
+
+.game-session-overlay {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  display: grid;
+  gap: 12px;
+  max-width: min(360px, calc(100vw - 40px));
+  pointer-events: none;
+}
+
+.game-return-button,
+.game-session-error {
+  pointer-events: auto;
+}
+
+.game-return-button {
+  color: #dceeff;
+  background: rgba(5, 14, 28, 0.82);
+  box-shadow: 0 14px 36px rgba(1, 7, 17, 0.38);
+  backdrop-filter: blur(14px);
+}
+
+.game-session-error {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 159, 159, 0.28);
+  border-radius: 14px;
+  color: #ffd1d1;
+  background: rgba(50, 8, 18, 0.72);
+  box-shadow: 0 14px 36px rgba(1, 7, 17, 0.28);
+  backdrop-filter: blur(14px);
+}
+
 .lobby-card {
   padding: 32px;
 }

@@ -1,5 +1,31 @@
 # Architecture Rules
 
+## Public API Style
+
+- Prefer public `interface` types plus `createX()` factory functions for package APIs.
+- Do not export classes just to group state or methods.
+- Export public classes only for clear instance semantics such as custom errors, inheritance extension points, or required `instanceof` checks.
+- Keep private state inside closures or internal implementation modules when a factory can hide it.
+- Keep package `src/index.ts` files focused on public exports; split large implementation files by responsibility.
+
+## Module Size
+
+- Split files when they mix unrelated responsibilities, not just because a line count looks large.
+- Treat files above roughly 250 lines as a review signal for possible extraction.
+- Treat files above roughly 400 lines as needing a clear reason to stay together.
+- Prefer extracting by responsibility, such as `types`, `registry`, `store`, `catalog`, `loader`, or adapter modules.
+- Do not split tightly coupled logic into tiny files that make the execution flow harder to follow.
+- Keep package entrypoints small and focused on exports instead of implementation details.
+
+## Callback And Lifecycle Naming
+
+- Use `onXxx(listener)` for event subscription APIs that register listeners and return unsubscribe callbacks.
+- Use `onXxx(requestOrEvent)` for passive module lifecycle callbacks invoked by a host.
+- Use `requestXxx()` for caller-initiated operations that can be allowed, cancelled, or rejected.
+- Keep `handleXxx()` names internal to implementation modules; do not use them as public lifecycle hook names.
+- Use `beforeXxx` and `afterXxx` only for strict phase ordering, not for platform-to-game lifecycle requests.
+- Use `RuntimeModule.onStopRequested()` for game stop requests; do not introduce public `beforeStop`, `beforeExit`, or `handleStopRequested` hooks.
+
 ## Graphics Boundary
 
 - Keep renderer packages such as `three` inside `packages/graphics`.
@@ -23,3 +49,4 @@
 - Keep resource manifest records minimal: `key`, `path`, and optional `preload: true`.
 - Do not write `kind`, `cache`, `bundle`, `group`, `priority`, or `preload: false` in v1 resource manifests.
 - Keep resource files under `assets/` and localization files under `translations/`.
+- Convert manifest paths with a bundler-provided URL map when resources are bundled; do not rely on dynamic runtime URL construction for packaged assets.

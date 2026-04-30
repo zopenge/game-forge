@@ -22,6 +22,8 @@ export interface ResourceManifestRecord {
   readonly preload?: true;
 }
 
+export type ResourceUrlMap = Readonly<Record<string, string>>;
+
 export interface ResourceLoadState {
   readonly error?: Error;
   readonly key: string;
@@ -104,9 +106,16 @@ const normalizeBaseUrl = (baseUrl: URL | string) => {
   return baseUrlHref.endsWith('/') ? baseUrlHref : `${baseUrlHref}/`;
 };
 
+const resolveManifestResourceUri = (
+  path: string,
+  baseUrl: string,
+  resourceUrls?: ResourceUrlMap
+) => resourceUrls?.[`../${path}`] ?? resourceUrls?.[path] ?? new URL(path, baseUrl).href;
+
 export const createResourceRecordsFromManifests = (
   manifests: readonly ResourceManifest[],
-  baseUrl: URL | string
+  baseUrl: URL | string,
+  resourceUrls?: ResourceUrlMap
 ): readonly ResourceRecord[] => {
   const resourceBaseUrl = normalizeBaseUrl(baseUrl);
 
@@ -114,7 +123,7 @@ export const createResourceRecordsFromManifests = (
     key: resource.key,
     kind: inferResourceKind(resource.path),
     ...(resource.preload === true ? { preload: true } : {}),
-    uri: new URL(resource.path, resourceBaseUrl).href
+    uri: resolveManifestResourceUri(resource.path, resourceBaseUrl, resourceUrls)
   })));
 };
 

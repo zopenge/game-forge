@@ -37,7 +37,8 @@ pnpm dev:game-client:logged
 
 - `pnpm dev` is the primary local development entrypoint.
 - It starts `backend`, `game-client`, and `admin-panel` together.
-- It checks ports `3001`, `5173`, and `5174` before starting.
+- It prefers ports `3001`, `5173`, and `5174`, but automatically uses the next available port when a default is busy.
+- It passes the selected backend URL into the game client Vite proxy so API routes continue to work after a port fallback.
 - It opens browser pages automatically when browser-facing services are ready.
 - `Ctrl+C` in the root terminal should stop the managed development stack together.
 - Set `GAME_FORGE_OPEN_BROWSER=0` to disable automatic browser opening.
@@ -86,6 +87,30 @@ The repository currently treats ESLint warnings as failures through the root lin
 - wallet packages use aliases such as `@game-forge/wallet-core` and `@game-forge/wallet-evm`
 - test tooling and TypeScript path aliases are configured at the repository root
 
+### Package API Style
+
+- package public APIs should prefer `interface` types plus `createX()` factory functions
+- callers should depend on interfaces such as `ResourceManager`, `I18nStore`, or `GameCartridgeRegistry`
+- factories such as `createResourceManager()`, `createI18nStore()`, and `createRenderApp()` own construction and hide private state
+- reserve exported classes for clear class semantics, such as custom errors or required `instanceof` checks
+- keep `src/index.ts` files focused on exports; move implementation into responsibility-specific modules as files grow
+
+### Callback And Lifecycle Naming
+
+- use `onXxx(listener)` for subscription APIs that return unsubscribe callbacks
+- use `onXxx(requestOrEvent)` for passive lifecycle callbacks invoked by a host, such as `RuntimeModule.onStopRequested()`
+- use `requestXxx()` for caller-initiated operations that can be cancelled, such as `RenderApp.requestStop()`
+- keep `handleXxx()` names internal; do not expose them as public lifecycle hooks
+- do not use `beforeStop`, `beforeExit`, or `handleStopRequested` for game session stop callbacks
+
+### Module Size
+
+- large files are a maintainability signal, not an automatic failure
+- review files above roughly 250 lines for possible extraction by responsibility
+- files above roughly 400 lines should have a clear reason to stay together
+- split by concepts such as `types`, `registry`, `store`, `catalog`, `loader`, or adapter boundaries
+- avoid over-splitting tightly coupled logic into tiny files that make the flow harder to understand
+
 ### Localized UI Copy
 
 - user-facing page copy belongs in `translations/*.json` files, not inline inside page templates or flow control
@@ -102,6 +127,8 @@ The repository currently treats ESLint warnings as failures through the root lin
 - cartridges should declare private resources with keys prefixed by the cartridge id
 - cartridge-private resource files belong under `packages/games/<game-id>/assets/`
 - cartridge code should read resources through `GameCartridgeContext.resources`
+- cartridges should respond to platform session stop requests through `RuntimeModule.onStopRequested()` when they need to save, settle, or cancel exit
+- cartridges should not draw platform navigation controls such as the return-to-lobby button
 - v1 networking is only a reserved service location; cartridges should not implement WebRTC or matchmaking directly
 
 ### Resource Loading
@@ -110,6 +137,7 @@ The repository currently treats ESLint warnings as failures through the root lin
 - resource keys should be namespaced, such as `shared.ui-click` or `bee-shooter.projectile-config`
 - shared resources belong in `packages/shared-resources`, not inside a game package
 - declare bundled resources in `resource-manifests/*.json`; TypeScript should import manifests instead of hand-writing resource record arrays
+- bundled package entrypoints should provide a bundler URL map to `createResourceRecordsFromManifests()` so manifest paths become packaged asset URLs
 - v1 resource loading is renderer-agnostic; renderer-specific textures and models should be loaded behind graphics adapters from resolved URIs
 - launch-critical resources should set `preload: true`; on-demand resources should omit `preload`
 - resource manifest records should contain only `key`, `path`, and optional `preload: true`

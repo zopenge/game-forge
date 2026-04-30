@@ -14,6 +14,33 @@ export interface RenderClock {
   requestFrame(callback: () => void): number;
 }
 
+export type RuntimeStopReason =
+  | 'return-to-lobby'
+  | 'logout'
+  | 'wallet-session-changed'
+  | 'host-disposed';
+
+export type RuntimeStopSource =
+  | 'platform-button'
+  | 'keyboard'
+  | 'browser-back'
+  | 'session';
+
+export interface RuntimeStopRequest {
+  readonly reason: RuntimeStopReason;
+  readonly source: RuntimeStopSource;
+}
+
+export interface RuntimeStopDecision {
+  readonly allow: boolean;
+  readonly message?: string;
+}
+
+export interface RuntimeStopResult {
+  readonly message?: string;
+  readonly status: 'stopped' | 'cancelled';
+}
+
 export interface RenderBackend<scene, host> {
   dispose(scene: scene): void;
   mount(host: host): scene;
@@ -22,12 +49,14 @@ export interface RenderBackend<scene, host> {
 }
 
 export interface RuntimeModule<scene> {
+  onStopRequested?(request: RuntimeStopRequest): void | RuntimeStopDecision | Promise<void | RuntimeStopDecision>;
   setup(context: { readonly scene: scene }): void | (() => void);
   update(context: { readonly frame: RenderFrame; readonly scene: scene }): void;
 }
 
 export interface RenderApp {
   isRunning(): boolean;
+  requestStop(request: RuntimeStopRequest): Promise<RuntimeStopResult>;
   resize(): void;
   start(): void;
   stop(): void;
@@ -95,8 +124,55 @@ export const createRenderApp = <scene, host>({
     animationFrameId = runtimeClock.requestFrame(step);
   };
 
+  const stop = () => {
+    if (!currentScene) {
+      return;
+    }
+
+    isRunning = false;
+
+    if (animationFrameId !== undefined) {
+      runtimeClock.cancelFrame(animationFrameId);
+    }
+
+    teardown?.();
+    backend.dispose(currentScene);
+    currentScene = undefined;
+    animationFrameId = undefined;
+    teardown = undefined;
+  };
+
   return {
     isRunning: () => isRunning,
+    requestStop: async (request) => {
+      if (!currentScene) {
+        return {
+          status: 'stopped'
+        };
+      }
+
+      try {
+        const decision = await module.onStopRequested?.(request);
+
+        if (decision?.allow === false) {
+          return {
+            ...(decision.message ? { message: decision.message } : {}),
+            status: 'cancelled'
+          };
+        }
+      } catch (error) {
+        return {
+          message: error instanceof Error ? error.message : String(error),
+          status: 'cancelled'
+        };
+      }
+
+      stop();
+
+      return {
+        status: 'stopped'
+      };
+    },
     resize: () => {
       if (!currentScene) {
         return;
@@ -116,22 +192,6 @@ export const createRenderApp = <scene, host>({
       lastTimestamp = 0;
       animationFrameId = runtimeClock.requestFrame(step);
     },
-    stop: () => {
-      if (!currentScene) {
-        return;
-      }
-
-      isRunning = false;
-
-      if (animationFrameId !== undefined) {
-        runtimeClock.cancelFrame(animationFrameId);
-      }
-
-      teardown?.();
-      backend.dispose(currentScene);
-      currentScene = undefined;
-      animationFrameId = undefined;
-      teardown = undefined;
-    }
-  };
+    stop
+  } satisfies RenderApp;
 };

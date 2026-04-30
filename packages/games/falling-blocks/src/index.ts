@@ -1,6 +1,6 @@
 import type { GameCartridge, GameCartridgeContext } from '@game-forge/game-cartridge';
 import type { GraphicsNode, GraphicsRenderScene } from '@game-forge/graphics';
-import type { ResourceManifest } from '@game-forge/resources';
+import type { ResourceManifest, ResourceUrlMap } from '@game-forge/resources';
 import { createTranslationCatalog } from '@game-forge/i18n';
 import { createResourceRecordsFromManifests } from '@game-forge/resources';
 import type { RuntimeModule } from '@game-forge/runtime';
@@ -18,9 +18,27 @@ export const fallingBlocksMessages = createTranslationCatalog(fallingBlocksCatal
 
 export type FallingBlocksMessageKey = keyof typeof fallingBlocksMessages['en-US'];
 
+type ImportMetaWithResourceGlob = ImportMeta & {
+  glob(
+    pattern: string,
+    options: {
+      readonly eager: true;
+      readonly import: 'default';
+      readonly query: '?url';
+    }
+  ): ResourceUrlMap;
+};
+
+const resourceUrls = (import.meta as ImportMetaWithResourceGlob).glob('../assets/**', {
+  eager: true,
+  import: 'default',
+  query: '?url'
+});
+
 export const fallingBlocksResources = createResourceRecordsFromManifests(
   [coreResourceManifest as ResourceManifest],
-  new URL('..', import.meta.url)
+  new URL('..', import.meta.url),
+  resourceUrls
 );
 
 export interface FallingBlocksCell {

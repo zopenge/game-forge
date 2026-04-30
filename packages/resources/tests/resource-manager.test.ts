@@ -99,6 +99,31 @@ describe('create-resource-manager', () => {
     ]);
   });
 
+  test('uses bundled resource URL maps when provided', () => {
+    const manifests: ResourceManifest[] = [{
+      resources: [
+        {
+          key: 'shared.config',
+          path: 'assets/config.json',
+          preload: true
+        }
+      ]
+    }];
+
+    expect(createResourceRecordsFromManifests(
+      manifests,
+      'https://cdn.example.test/shared',
+      {
+        '../assets/config.json': '/bundled/config-abc123.json'
+      }
+    )).toEqual([{
+      key: 'shared.config',
+      kind: 'json',
+      preload: true,
+      uri: '/bundled/config-abc123.json'
+    }]);
+  });
+
   test('resolves records and rejects duplicate keys', () => {
     const manager = createResourceManager({
       resources: createRecords()
