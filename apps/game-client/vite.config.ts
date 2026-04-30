@@ -5,7 +5,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          three: ['three']
+          graphics: ['@game-forge/graphics']
         }
       }
     }

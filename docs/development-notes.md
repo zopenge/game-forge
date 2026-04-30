@@ -81,17 +81,18 @@ The repository currently treats ESLint warnings as failures through the root lin
 - shared package imports use workspace aliases such as `@game-forge/runtime`
 - generic resource loading uses `@game-forge/resources`
 - shared bundled resources use `@game-forge/shared-resources`
-- localization primitives use the shared `@game-forge/i18n` workspace package
+- localization primitives use the shared `@game-forge/i18n` workspace package with external `translations/*.json` files
 - game cartridges use `@game-forge/game-cartridge`; concrete built-in games live under `packages/games/*`
 - wallet packages use aliases such as `@game-forge/wallet-core` and `@game-forge/wallet-evm`
 - test tooling and TypeScript path aliases are configured at the repository root
 
 ### Localized UI Copy
 
-- user-facing page copy belongs in locale message catalogs, not inline inside page templates or flow control
+- user-facing page copy belongs in `translations/*.json` files, not inline inside page templates or flow control
 - browser apps currently share the `game-forge.locale` storage key for persisted locale choice
 - new localized views should prefer semantic translation keys over English source strings
-- each game cartridge should provide its own `en-US` and `zh-CN` message catalog and receive the active locale through `GameCartridgeContext`
+- each game cartridge should provide its own `translations/en-US.json` and `translations/zh-CN.json` files and receive the active locale through `GameCartridgeContext`
+- translation JSON files must stay valid UTF-8 and readable because they are intended to be handed to translators
 
 ### Game Cartridges
 
@@ -108,14 +109,15 @@ The repository currently treats ESLint warnings as failures through the root lin
 - `@game-forge/resources` owns `ResourceManager` and generic resource loading for image, audio, JSON, text, and binary files
 - resource keys should be namespaced, such as `shared.ui-click` or `bee-shooter.projectile-config`
 - shared resources belong in `packages/shared-resources`, not inside a game package
-- use `new URL('../assets/file.ext', import.meta.url).href` for bundled resource URIs
-- v1 resource loading is renderer-agnostic; Three textures and models should be loaded by graphics adapters or game code from resolved URIs
-- launch-critical resources should set `preload: true` or `priority: 'critical'`
+- declare bundled resources in `resource-manifests/*.json`; TypeScript should import manifests instead of hand-writing resource record arrays
+- v1 resource loading is renderer-agnostic; renderer-specific textures and models should be loaded behind graphics adapters from resolved URIs
+- launch-critical resources should set `preload: true`; on-demand resources should omit `preload`
+- resource manifest records should contain only `key`, `path`, and optional `preload: true`
 
 ### Renderer Boundary
 
-- application code should prefer runtime and graphics boundaries over directly coupling to a renderer everywhere
-- if the current Three.js backend needs more capability, expand the narrow abstraction carefully
+- application code must use runtime and graphics boundaries instead of directly coupling to a renderer
+- if the current graphics backend needs more capability, expand the narrow abstraction carefully
 - do not introduce a thick universal engine API unless there is a strong, proven need
 
 ### Logs And Scripts

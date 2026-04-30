@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import type { ResourceLoaderMap, ResourceRecord } from '../src/index';
-import { createResourceManager } from '../src/index';
+import type { ResourceLoaderMap, ResourceManifest, ResourceRecord } from '../src/index';
+import { createResourceManager, createResourceRecordsFromManifests } from '../src/index';
 
 const createRecords = (): ResourceRecord[] => [
   {
@@ -36,6 +36,69 @@ const createRecords = (): ResourceRecord[] => [
 ];
 
 describe('create-resource-manager', () => {
+  test('creates resource records from minimal split manifests', () => {
+    const manifests: ResourceManifest[] = [
+      {
+        resources: [
+          {
+            key: 'shared.placeholder-image',
+            path: 'assets/placeholder-image.svg'
+          },
+          {
+            key: 'shared.ui-click',
+            path: 'assets/ui-click.mp3',
+            preload: true
+          },
+          {
+            key: 'shared.copy',
+            path: 'assets/copy.md'
+          }
+        ]
+      },
+      {
+        resources: [
+          {
+            key: 'shared.config',
+            path: 'assets/config.json'
+          },
+          {
+            key: 'shared.binary-seed',
+            path: 'assets/seed.unknown'
+          }
+        ]
+      }
+    ];
+
+    expect(createResourceRecordsFromManifests(manifests, 'https://cdn.example.test/shared')).toEqual([
+      {
+        key: 'shared.placeholder-image',
+        kind: 'image',
+        uri: 'https://cdn.example.test/shared/assets/placeholder-image.svg'
+      },
+      {
+        key: 'shared.ui-click',
+        kind: 'audio',
+        preload: true,
+        uri: 'https://cdn.example.test/shared/assets/ui-click.mp3'
+      },
+      {
+        key: 'shared.copy',
+        kind: 'text',
+        uri: 'https://cdn.example.test/shared/assets/copy.md'
+      },
+      {
+        key: 'shared.config',
+        kind: 'json',
+        uri: 'https://cdn.example.test/shared/assets/config.json'
+      },
+      {
+        key: 'shared.binary-seed',
+        kind: 'binary',
+        uri: 'https://cdn.example.test/shared/assets/seed.unknown'
+      }
+    ]);
+  });
+
   test('resolves records and rejects duplicate keys', () => {
     const manager = createResourceManager({
       resources: createRecords()

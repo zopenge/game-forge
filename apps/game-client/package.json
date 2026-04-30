@@ -19,7 +19,6 @@
     "@game-forge/runtime": "workspace:*",
     "@game-forge/shared-resources": "workspace:*",
     "@game-forge/wallet-core": "workspace:*",
-    "@game-forge/wallet-evm": "workspace:*",
-    "three": "^0.171.0"
+    "@game-forge/wallet-evm": "workspace:*"
   }
 }

@@ -1,5 +1,5 @@
 import type { ResourceManager, ResourceRecord } from '@game-forge/resources';
-import type { ThreeRenderScene } from '@game-forge/graphics';
+import type { GraphicsRenderScene } from '@game-forge/graphics';
 import type { LocaleCode, TranslationCatalogShape, TranslationParams } from '@game-forge/i18n';
 import type { RuntimeModule } from '@game-forge/runtime';
 import type { WalletAssetSnapshot } from '@game-forge/wallet-core';
@@ -41,7 +41,7 @@ export interface GameCartridgeContext<messageKey extends string = string> {
 }
 
 export interface GameCartridgeCapabilities {
-  readonly graphics: 'three';
+  readonly graphics: 'scene-graph-3d';
   readonly input: 'keyboard';
   readonly matchmaking?: boolean;
   readonly networking?: 'none' | 'client-server' | 'p2p';
@@ -49,7 +49,7 @@ export interface GameCartridgeCapabilities {
 
 export interface GameCartridge<messageKey extends string = string> {
   readonly capabilities: GameCartridgeCapabilities;
-  createModule(context: GameCartridgeContext<messageKey>): RuntimeModule<ThreeRenderScene>;
+  createModule(context: GameCartridgeContext<messageKey>): RuntimeModule<GraphicsRenderScene>;
   readonly descriptionKey: messageKey;
   readonly id: string;
   readonly messages: GameCartridgeMessages<messageKey>;

@@ -1,16 +1,9 @@
-import type { ResourceRecord } from '@game-forge/resources';
+import type { ResourceManifest } from '@game-forge/resources';
+import { createResourceRecordsFromManifests } from '@game-forge/resources';
 
-export const sharedResources = [
-  {
-    key: 'shared.ui-click',
-    kind: 'text',
-    preload: true,
-    uri: new URL('../assets/ui-click.txt', import.meta.url).href
-  },
-  {
-    key: 'shared.placeholder-image',
-    kind: 'image',
-    priority: 'lazy',
-    uri: new URL('../assets/placeholder-image.svg', import.meta.url).href
-  }
-] satisfies readonly ResourceRecord[];
+import uiManifest from '../resource-manifests/ui.json';
+
+export const sharedResources = createResourceRecordsFromManifests(
+  [uiManifest as ResourceManifest],
+  new URL('..', import.meta.url)
+);

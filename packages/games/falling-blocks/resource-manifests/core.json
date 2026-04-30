@@ -1,0 +1,13 @@
+{
+  "resources": [
+    {
+      "key": "falling-blocks.block-pattern",
+      "path": "assets/block-pattern.svg"
+    },
+    {
+      "key": "falling-blocks.board-config",
+      "path": "assets/board-config.json",
+      "preload": true
+    }
+  ]
+}

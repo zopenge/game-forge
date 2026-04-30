@@ -10,8 +10,7 @@
     "@game-forge/game-cartridge": "workspace:*",
     "@game-forge/graphics": "workspace:*",
     "@game-forge/i18n": "workspace:*",
-    "@game-forge/runtime": "workspace:*",
-    "three": "^0.171.0"
+    "@game-forge/runtime": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"

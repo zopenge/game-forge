@@ -123,9 +123,6 @@ importers:
       '@game-forge/wallet-evm':
         specifier: workspace:*
         version: link:../../packages/wallet/evm
-      three:
-        specifier: ^0.171.0
-        version: 0.171.0
 
   packages/assets: {}
 
@@ -166,9 +163,6 @@ importers:
       '@game-forge/runtime':
         specifier: workspace:*
         version: link:../../runtime
-      three:
-        specifier: ^0.171.0
-        version: 0.171.0
 
   packages/games/falling-blocks:
     dependencies:
@@ -187,9 +181,6 @@ importers:
       '@game-forge/runtime':
         specifier: workspace:*
         version: link:../../runtime
-      three:
-        specifier: ^0.171.0
-        version: 0.171.0
 
   packages/graphics:
     dependencies:

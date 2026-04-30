@@ -1,11 +1,9 @@
 import { describe, expect, test } from 'vitest';
 
-import { PerspectiveCamera, Scene } from 'three';
-import type { WebGLRenderer } from 'three';
-
-import { createResourceManager } from '@game-forge/resources';
 import type { GameCartridgeContext } from '@game-forge/game-cartridge';
+import { createResourceManager } from '@game-forge/resources';
 
+import { createTestGraphicsScene } from '../../../../tests/helpers/create-test-graphics-scene';
 import {
   createFallingBlocksState,
   fallingBlocksGameCartridge,
@@ -33,22 +31,12 @@ const createContext = (): GameCartridgeContext => ({
     resources: fallingBlocksGameCartridge.resources ?? []
   })
 });
-const createRenderScene = () => ({
-  camera: new PerspectiveCamera(70, 1, 0.1, 100),
-  renderer: {} as WebGLRenderer,
-  scene: new Scene(),
-  viewport: {
-    dpr: 1,
-    height: 320,
-    width: 480
-  }
-});
 
 describe('falling-blocks-game-cartridge', () => {
   test('declares localized metadata and v1 capabilities', () => {
     expect(fallingBlocksGameCartridge.id).toBe('falling-blocks');
     expect(fallingBlocksGameCartridge.capabilities).toEqual({
-      graphics: 'three',
+      graphics: 'scene-graph-3d',
       input: 'keyboard',
       networking: 'none'
     });
@@ -72,7 +60,7 @@ describe('falling-blocks-game-cartridge', () => {
 
   test('creates a module that sets up, updates, and tears down a scene', () => {
     const module = fallingBlocksGameCartridge.createModule(createContext());
-    const renderScene = createRenderScene();
+    const renderScene = createTestGraphicsScene();
 
     const teardown = module.setup({ scene: renderScene });
 

@@ -12,6 +12,16 @@ export interface ResourceRecord {
   readonly uri: string;
 }
 
+export interface ResourceManifest {
+  readonly resources: readonly ResourceManifestRecord[];
+}
+
+export interface ResourceManifestRecord {
+  readonly key: string;
+  readonly path: string;
+  readonly preload?: true;
+}
+
 export interface ResourceLoadState {
   readonly error?: Error;
   readonly key: string;
@@ -70,6 +80,42 @@ const getDefaultFetchResource = async (uri: string): Promise<FetchResourceRespon
   }
 
   return response;
+};
+
+const extensionKindEntries = [
+  [['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'], 'image'],
+  [['.mp3', '.ogg', '.wav', '.m4a'], 'audio'],
+  [['.json'], 'json'],
+  [['.txt', '.csv', '.md'], 'text']
+] satisfies readonly [readonly string[], ResourceKind][];
+
+const inferResourceKind = (path: string): ResourceKind => {
+  const normalizedPath = path.toLowerCase();
+  const match = extensionKindEntries.find(([extensions]) => (
+    extensions.some((extension) => normalizedPath.endsWith(extension))
+  ));
+
+  return match?.[1] ?? 'binary';
+};
+
+const normalizeBaseUrl = (baseUrl: URL | string) => {
+  const baseUrlHref = typeof baseUrl === 'string' ? baseUrl : baseUrl.href;
+
+  return baseUrlHref.endsWith('/') ? baseUrlHref : `${baseUrlHref}/`;
+};
+
+export const createResourceRecordsFromManifests = (
+  manifests: readonly ResourceManifest[],
+  baseUrl: URL | string
+): readonly ResourceRecord[] => {
+  const resourceBaseUrl = normalizeBaseUrl(baseUrl);
+
+  return manifests.flatMap((manifest) => manifest.resources.map((resource) => ({
+    key: resource.key,
+    kind: inferResourceKind(resource.path),
+    ...(resource.preload === true ? { preload: true } : {}),
+    uri: new URL(resource.path, resourceBaseUrl).href
+  })));
 };
 
 export const createResourceCatalog = (resources: readonly ResourceRecord[]): ResourceCatalog => {

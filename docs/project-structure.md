@@ -5,7 +5,7 @@
 `game-forge` is a TypeScript monorepo managed with `pnpm` workspaces. It contains browser applications, shared packages, repository-level tests, repository scripts, and persistent engineering rules.
 
 The project is intentionally split into narrow packages so that runtime behavior, rendering, wallet integration, platform access, and application code stay loosely coupled.
-Game code is packaged as game cartridges so the browser client can select a game while each game keeps its own source, tests, assets, and localized messages.
+Game code is packaged as game cartridges so the browser client can select a game while each game keeps its own source, tests, assets, and `translations/*.json` files.
 
 ## Top-Level Layout
 
@@ -33,8 +33,8 @@ game-forge/
 Browser game client example.
 
 - Uses `@game-forge/runtime` for lifecycle and frame flow
-- Uses `@game-forge/graphics` for the current Three.js backend
-- Uses `@game-forge/i18n` for localized copy, locale persistence, and runtime switching
+- Uses `@game-forge/graphics` for backend-neutral scene graph rendering
+- Uses `@game-forge/i18n` with external `translations/*.json` files for localized copy, locale persistence, and runtime switching
 - Uses wallet-aware login and lobby flow before entering the current render path
 - Shows local game assets and wallet-backed on-chain assets in separate sections
 - Lists built-in game cartridges from `src/game-cartridges.ts` and injects player, assets, i18n, and platform services when launching one
@@ -52,7 +52,7 @@ Key files:
 Browser admin UI example.
 
 - Uses shared packages instead of directly reaching into browser logic everywhere
-- Uses the shared i18n package for localized labels and locale switching
+- Uses the shared i18n package with external translation JSON files for localized labels and locale switching
 - Demonstrates that non-game applications can still live in the same workspace
 
 Key files:
@@ -92,11 +92,11 @@ This package is the stable boundary between applications and rendering backends.
 
 Owns rendering backend implementations.
 
-- `ThreeRenderScene`
-- `ThreeRenderBackendOptions`
-- `createThreeRenderBackend()`
+- `GraphicsRenderScene`
+- `GraphicsRenderBackendOptions`
+- `createGraphicsRenderBackend()`
 
-Right now it provides a Three.js backend. The abstraction is intentionally narrow so future renderer swaps do not force a full engine wrapper.
+The package owns renderer implementations behind a backend-neutral scene graph API. Public graphics names must not expose the underlying renderer.
 
 ### `packages/game-cartridge`
 
@@ -113,18 +113,18 @@ The package is singular because it defines the protocol for one cartridge. Concr
 
 Small built-in shooter cartridge for testing the cartridge lifecycle.
 
-- Uses the Three.js graphics path through `@game-forge/graphics`
-- Provides localized cartridge metadata through `@game-forge/i18n`
-- Declares private resources from `assets/` and receives a resource manager through cartridge context
+- Uses the `scene-graph-3d` graphics capability through `@game-forge/graphics`
+- Provides localized cartridge metadata through `translations/*.json` and `@game-forge/i18n`
+- Declares private resources through `resource-manifests/*.json` and receives a resource manager through cartridge context
 - Exercises player movement, projectiles, enemy motion, collision, and scoring behavior
 
 ### `packages/games/falling-blocks`
 
 Small built-in falling-blocks cartridge for testing grid-like gameplay.
 
-- Uses the Three.js graphics path through `@game-forge/graphics`
-- Provides localized cartridge metadata through `@game-forge/i18n`
-- Declares private resources from `assets/` and receives a resource manager through cartridge context
+- Uses the `scene-graph-3d` graphics capability through `@game-forge/graphics`
+- Provides localized cartridge metadata through `translations/*.json` and `@game-forge/i18n`
+- Declares private resources through `resource-manifests/*.json` and receives a resource manager through cartridge context
 - Exercises board state, piece movement, rotation, line clears, and game-over state
 
 ### `packages/wallet/core`
@@ -187,7 +187,7 @@ Owns asset registration, resource catalogs, and generic resource loading.
 - `ResourceManager` for image, audio, JSON, text, and binary resources
 - preload, memory cache, unload, and load-state tracking
 
-The package stays renderer-agnostic. Three-specific texture or model helpers should live in graphics adapters or game packages.
+The package stays renderer-agnostic. Renderer-specific texture or model helpers should live behind graphics adapters.
 
 ### `packages/shared-resources`
 
@@ -206,22 +206,22 @@ Owns environment-facing platform helpers.
 ## Game Cartridge Flow
 
 - `apps/game-client/src/game-cartridges.ts` imports built-in cartridges and registers them with `createGameCartridgeRegistry()`.
-- The lobby renders translated cartridge metadata from each cartridge's message catalog.
+- The lobby renders translated cartridge metadata from each cartridge's external translation catalog.
 - When the player starts a cartridge, the shell creates `GameCartridgeContext` with player identity, local assets, wallet assets, i18n, resources, and platform services.
 - Before launch, the shell merges `@game-forge/shared-resources` records with the selected cartridge's private resources and preloads required resources.
 - If resource preload fails, the player stays in the lobby and sees a localized load error.
-- v1 only supports Three.js cartridges through `RuntimeModule<ThreeRenderScene>`.
+- v1 supports `scene-graph-3d` cartridges through `RuntimeModule<GraphicsRenderScene>`.
 - v1 exposes `services.networking.isAvailable === false` as the reserved location for later networking support.
 
 ## Game Resources
 
-- Shared resources live in `packages/shared-resources/assets/` and are exported as `sharedResources`.
-- Cartridge-private resources live in `packages/games/<game-id>/assets/`.
+- Shared resource files live in `packages/shared-resources/assets/` and are declared in `packages/shared-resources/resource-manifests/*.json`.
+- Cartridge-private resource files live in `packages/games/<game-id>/assets/` and are declared in `packages/games/<game-id>/resource-manifests/*.json`.
 - Resource keys are namespaced, such as `shared.ui-click`, `bee-shooter.projectile-config`, and `falling-blocks.board-config`.
-- Cartridges declare resource records on `GameCartridge.resources`.
+- Cartridges expose resource records on `GameCartridge.resources`, generated from manifest JSON.
 - Games access resources through `context.resources`, not by hardcoding platform paths.
-- v1 uses bundled package resources and `new URL('../assets/file.ext', import.meta.url).href`.
-- `@game-forge/resources` does not depend on Three; games can pass resolved URLs to renderer-specific loaders when needed.
+- v1 manifest records contain only `key`, `path`, and optional `preload: true`; resource kind is inferred from file extension.
+- `@game-forge/resources` does not depend on renderer packages; games can pass resolved URLs to graphics abstractions when needed.
 
 ## Multiplayer Extension Points
 
@@ -234,8 +234,9 @@ Multiplayer is intentionally not implemented in v1. Future networking work shoul
 
 ## Game Localization
 
-- Cartridge metadata and game text belong in each cartridge package's message catalog.
-- Cartridges use `@game-forge/i18n` to validate `en-US` and `zh-CN` keys.
+- Cartridge metadata and game text belong in each cartridge package's `translations/*.json` files.
+- Apps and cartridges import translation JSON files into `@game-forge/i18n` for `en-US` and `zh-CN` key validation.
+- Do not write production localization text inline in TypeScript source files.
 - The platform owns locale selection and injects `context.i18n` into the selected cartridge.
 - The game client and cartridges share the active locale so switching language updates the lobby and cartridge metadata together.
 

@@ -1,0 +1,6 @@
+{
+  "falling-blocks.description": "用于测试网格、旋转、消行和失败状态的简化落块游戏。",
+  "falling-blocks.tag.puzzle": "益智",
+  "falling-blocks.tag.grid": "网格",
+  "falling-blocks.title": "俄罗斯方块"
+}

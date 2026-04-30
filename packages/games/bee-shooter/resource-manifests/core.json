@@ -1,0 +1,14 @@
+{
+  "resources": [
+    {
+      "key": "bee-shooter.player-marker",
+      "path": "assets/player-marker.svg",
+      "preload": true
+    },
+    {
+      "key": "bee-shooter.projectile-config",
+      "path": "assets/projectile-config.json",
+      "preload": true
+    }
+  ]
+}

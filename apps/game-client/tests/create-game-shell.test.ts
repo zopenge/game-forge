@@ -329,7 +329,7 @@ describe('create-game-shell', () => {
       },
       gameCartridges: [{
         capabilities: {
-          graphics: 'three',
+          graphics: 'scene-graph-3d',
           input: 'keyboard',
           networking: 'none'
         },
@@ -413,7 +413,7 @@ describe('create-game-shell', () => {
       },
       gameCartridges: [{
         capabilities: {
-          graphics: 'three',
+          graphics: 'scene-graph-3d',
           input: 'keyboard',
           networking: 'none'
         },
@@ -468,7 +468,7 @@ describe('create-game-shell', () => {
       }),
       gameCartridges: [{
         capabilities: {
-          graphics: 'three',
+          graphics: 'scene-graph-3d',
           input: 'keyboard',
           networking: 'none'
         },
@@ -520,7 +520,7 @@ describe('create-game-shell', () => {
       authStorage: createMemoryAuthStorage('token-1'),
       gameCartridges: [{
         capabilities: {
-          graphics: 'three',
+          graphics: 'scene-graph-3d',
           input: 'keyboard',
           networking: 'none'
         },

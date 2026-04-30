@@ -1,0 +1,6 @@
+{
+  "falling-blocks.description": "A simple falling block board for testing grids, rotation, line clears, and fail state.",
+  "falling-blocks.tag.puzzle": "Puzzle",
+  "falling-blocks.tag.grid": "Grid",
+  "falling-blocks.title": "Falling Blocks"
+}

@@ -1,49 +1,27 @@
-﻿import { createTranslationCatalog } from '@game-forge/i18n';
-import type { ResourceRecord } from '@game-forge/resources';
 import type { GameCartridge, GameCartridgeContext } from '@game-forge/game-cartridge';
-import type { ThreeRenderScene } from '@game-forge/graphics';
+import type { GraphicsNode, GraphicsRenderScene } from '@game-forge/graphics';
+import type { ResourceManifest } from '@game-forge/resources';
+import { createTranslationCatalog } from '@game-forge/i18n';
+import { createResourceRecordsFromManifests } from '@game-forge/resources';
 import type { RuntimeModule } from '@game-forge/runtime';
 
-import {
-  AmbientLight,
-  BoxGeometry,
-  DirectionalLight,
-  Group,
-  Mesh,
-  MeshStandardMaterial
-} from 'three';
+import coreResourceManifest from '../resource-manifests/core.json';
+import enUsMessages from '../translations/en-US.json';
+import zhCnMessages from '../translations/zh-CN.json';
 
-export const fallingBlocksMessages = createTranslationCatalog({
-  'en-US': {
-    'falling-blocks.description': 'A simple falling block board for testing grids, rotation, line clears, and fail state.',
-    'falling-blocks.tag.puzzle': 'Puzzle',
-    'falling-blocks.tag.grid': 'Grid',
-    'falling-blocks.title': 'Falling Blocks'
-  },
-  'zh-CN': {
-    'falling-blocks.description': '用于测试网格、旋转、消行和失败状态的简化落块游戏。',
-    'falling-blocks.tag.puzzle': '益智',
-    'falling-blocks.tag.grid': '网格',
-    'falling-blocks.title': '俄罗斯方块'
-  }
-});
+const fallingBlocksCatalog = {
+  'en-US': enUsMessages,
+  'zh-CN': zhCnMessages
+};
+
+export const fallingBlocksMessages = createTranslationCatalog(fallingBlocksCatalog);
 
 export type FallingBlocksMessageKey = keyof typeof fallingBlocksMessages['en-US'];
 
-export const fallingBlocksResources = [
-  {
-    key: 'falling-blocks.block-pattern',
-    kind: 'image',
-    preload: true,
-    uri: new URL('../assets/block-pattern.svg', import.meta.url).href
-  },
-  {
-    key: 'falling-blocks.board-config',
-    kind: 'json',
-    priority: 'critical',
-    uri: new URL('../assets/board-config.json', import.meta.url).href
-  }
-] satisfies readonly ResourceRecord[];
+export const fallingBlocksResources = createResourceRecordsFromManifests(
+  [coreResourceManifest as ResourceManifest],
+  new URL('..', import.meta.url)
+);
 
 export interface FallingBlocksCell {
   readonly x: number;
@@ -178,32 +156,36 @@ export const rotateFallingBlocksPiece = (state: FallingBlocksState) => {
 
 export const createFallingBlocksModule = (
   context: GameCartridgeContext<FallingBlocksMessageKey>
-): RuntimeModule<ThreeRenderScene> => {
-  const root = new Group();
-  root.name = context.i18n.t('falling-blocks.title');
-  root.userData.resourceUri = context.resources.resolve('falling-blocks.board-config')?.uri;
+): RuntimeModule<GraphicsRenderScene> => {
   const state = createFallingBlocksState();
-  const blockGeometry = new BoxGeometry(0.18, 0.18, 0.08);
-  const activeMaterial = new MeshStandardMaterial({
-    color: 0x69d1ff,
-    roughness: 0.35
-  });
-  const lockedMaterial = new MeshStandardMaterial({
-    color: 0x59ffcf,
-    roughness: 0.4
-  });
-  const meshes: Mesh<BoxGeometry, MeshStandardMaterial>[] = [];
+  const meshes: GraphicsNode[] = [];
   let dropElapsedMs = 0;
+  let root: GraphicsNode | undefined;
 
-  const syncMeshes = () => {
+  const syncMeshes = (scene: GraphicsRenderScene) => {
+    if (!root) {
+      return;
+    }
+
     for (const mesh of meshes) {
       root.remove(mesh);
+      mesh.dispose();
     }
 
     meshes.length = 0;
 
-    const addBlock = (x: number, y: number, material: MeshStandardMaterial) => {
-      const mesh = new Mesh(blockGeometry, material);
+    const addBlock = (x: number, y: number, color: number) => {
+      if (!root) {
+        return;
+      }
+
+      const mesh = scene.scene.createBox({
+        color,
+        depth: 0.08,
+        height: 0.18,
+        roughness: 0.35,
+        width: 0.18
+      });
       mesh.position.set((x - 4.5) * 0.2, (8.5 - y) * 0.2, 0);
       root.add(mesh);
       meshes.push(mesh);
@@ -212,41 +194,54 @@ export const createFallingBlocksModule = (
     state.board.forEach((row, y) => {
       row.forEach((value, x) => {
         if (value === 1) {
-          addBlock(x, y, lockedMaterial);
+          addBlock(x, y, 0x59ffcf);
         }
       });
     });
 
     for (const cell of getAbsoluteCells(state.activePiece)) {
-      addBlock(cell.x, cell.y, activeMaterial);
+      addBlock(cell.x, cell.y, 0x69d1ff);
     }
   };
 
   return {
     setup: ({ scene }) => {
-      const ambientLight = new AmbientLight(0xffffff, 0.55);
-      const directionalLight = new DirectionalLight(0xffffff, 1.2);
+      root = scene.scene.createGroup();
+      root.name = context.i18n.t('falling-blocks.title');
+      root.userData.resourceUri = context.resources.resolve('falling-blocks.board-config')?.uri;
+
+      const ambientLight = scene.scene.createAmbientLight({
+        color: 0xffffff,
+        intensity: 0.55
+      });
+      const directionalLight = scene.scene.createDirectionalLight({
+        color: 0xffffff,
+        intensity: 1.2
+      });
       directionalLight.position.set(3, 4, 5);
       root.add(ambientLight, directionalLight);
-      syncMeshes();
+      syncMeshes(scene);
       scene.scene.add(root);
 
       return () => {
+        if (!root) {
+          return;
+        }
+
         scene.scene.remove(root);
-        root.clear();
-        blockGeometry.dispose();
-        activeMaterial.dispose();
-        lockedMaterial.dispose();
+        root.dispose();
+        meshes.length = 0;
+        root = undefined;
       };
     },
-    update: ({ frame }) => {
+    update: ({ frame, scene }) => {
       dropElapsedMs += frame.deltaMs;
 
       if (dropElapsedMs >= 600) {
         dropElapsedMs = 0;
         moveFallingBlocksDown(state);
         rotateFallingBlocksPiece(state);
-        syncMeshes();
+        syncMeshes(scene);
       }
     }
   };
@@ -254,7 +249,7 @@ export const createFallingBlocksModule = (
 
 export const fallingBlocksGameCartridge: GameCartridge<FallingBlocksMessageKey> = {
   capabilities: {
-    graphics: 'three',
+    graphics: 'scene-graph-3d',
     input: 'keyboard',
     networking: 'none'
   },

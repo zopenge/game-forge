@@ -1,0 +1,13 @@
+{
+  "resources": [
+    {
+      "key": "shared.ui-click",
+      "path": "assets/ui-click.txt",
+      "preload": true
+    },
+    {
+      "key": "shared.placeholder-image",
+      "path": "assets/placeholder-image.svg"
+    }
+  ]
+}

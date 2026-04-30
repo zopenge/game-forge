@@ -22,7 +22,37 @@ export default defineConfig(
       }
     },
     rules: {
-      '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }]
+      '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+      'no-restricted-imports': ['error', {
+        paths: [{
+          message: 'Renderer packages are implementation details of @game-forge/graphics.',
+          name: 'three'
+        }]
+      }]
+    }
+  },
+  {
+    files: ['packages/graphics/**/*.ts'],
+    rules: {
+      'no-restricted-imports': 'off'
+    }
+  },
+  {
+    files: ['packages/graphics/src/index.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', {
+        message: '@game-forge/graphics public exports must not expose renderer vendor names.',
+        selector: 'ExportAllDeclaration[source.value=/three/i], ExportNamedDeclaration[source.value=/three/i], ExportSpecifier[exported.name=/[Tt]hree/]'
+      }]
+    }
+  },
+  {
+    files: ['apps/**/src/**/*.ts', 'packages/**/src/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', {
+        message: 'Production localization catalogs must be loaded from translations/*.json files.',
+        selector: 'CallExpression[callee.name="createTranslationCatalog"] > ObjectExpression:first-child > Property[key.value="en-US"]'
+      }]
     }
   }
 );

@@ -1,0 +1,11 @@
+{
+  "common.locale.label": "Language",
+  "common.locale.en-US": "English",
+  "common.locale.zh-CN": "Simplified Chinese",
+  "admin.meta.brand": "game forge",
+  "admin.panel.title": "admin panel",
+  "admin.session.label": "session",
+  "admin.device.label": "device",
+  "admin.status.label": "status",
+  "admin.status.ready": "workspace ready"
+}

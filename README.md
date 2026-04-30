@@ -1,6 +1,6 @@
 # game-forge
 
-A TypeScript monorepo for game and tooling experiments built with `pnpm`, `vitest`, and a low-overhead rendering abstraction over `three`.
+A TypeScript monorepo for game and tooling experiments built with `pnpm`, `vitest`, and a low-overhead graphics abstraction.
 We love games, we can play together, we can make it together, let us do it !
 
 ## Quick Start
