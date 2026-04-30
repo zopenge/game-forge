@@ -26,6 +26,13 @@
 - Use `beforeXxx` and `afterXxx` only for strict phase ordering, not for platform-to-game lifecycle requests.
 - Use `RuntimeModule.onStopRequested()` for game stop requests; do not introduce public `beforeStop`, `beforeExit`, or `handleStopRequested` hooks.
 
+## Game Session Navigation
+
+- Keep platform navigation controls in the game-client shell, not in game cartridges.
+- Do not make game session navigation overlays permanently obscure gameplay.
+- Confirm player-initiated exits in the platform shell before calling `RenderApp.requestStop()`.
+- Let cartridges react to exit requests only through `RuntimeModule.onStopRequested()`.
+
 ## Graphics Boundary
 
 - Keep renderer packages such as `three` inside `packages/graphics`.

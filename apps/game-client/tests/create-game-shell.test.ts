@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { ResourceManager, ResourceRecord } from '@game-forge/resources';
 import type { GameCartridgeContext } from '@game-forge/game-cartridge';
@@ -93,6 +93,11 @@ const flushPromises = async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
 };
 
+const flushMicrotasks = async () => {
+  await Promise.resolve();
+  await Promise.resolve();
+};
+
 const createResourceManagerStub = (
   overrides: Partial<ResourceManager> = {}
 ): ResourceManager => ({
@@ -133,9 +138,14 @@ const createRenderAppStub = (overrides: Partial<RenderApp> = {}): RenderApp => (
 
 describe('create-game-shell', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     document.head.innerHTML = '';
     document.body.innerHTML = '';
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   test('shows the login view when there is no stored token', async () => {
@@ -314,10 +324,48 @@ describe('create-game-shell', () => {
     expect(resize).toHaveBeenCalledOnce();
     expect(host.querySelector('[data-role="game-session"]')).not.toBeNull();
     expect(gameHost?.dataset.role).toBe('game-stage');
+    expect(host.querySelector('[data-role="game-session-controls"]')).not.toBeNull();
+    expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('visible');
     expect(host.querySelector('[data-role="return-to-lobby-button"]')).not.toBeNull();
   });
 
-  test('platform return button requests a stop and returns to the lobby', async () => {
+  test('game session controls auto-hide and reappear on user intent', async () => {
+    vi.useFakeTimers();
+    const host = document.createElement('div');
+    const shell = createGameShell({
+      apiClient: createApiClientStub(),
+      authStorage: createMemoryAuthStorage('token-1'),
+      gameAppFactory: () => createRenderAppStub(),
+      host,
+      resourceManagerFactory: () => createResourceManagerStub()
+    });
+
+    await shell.start();
+    host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+    await flushMicrotasks();
+
+    expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('visible');
+
+    vi.advanceTimersByTime(2000);
+
+    expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('hidden');
+
+    window.dispatchEvent(new MouseEvent('mousemove'));
+
+    expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('visible');
+
+    vi.advanceTimersByTime(2000);
+
+    expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('hidden');
+
+    window.dispatchEvent(new Event('touchstart'));
+
+    expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('visible');
+
+    vi.useRealTimers();
+  });
+
+  test('platform return button confirms before stopping and returning to the lobby', async () => {
     const host = document.createElement('div');
     const requestStop = vi.fn(async () => ({
       status: 'stopped' as const
@@ -336,6 +384,20 @@ describe('create-game-shell', () => {
     host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
     await flushPromises();
     host.querySelector<HTMLButtonElement>('[data-role="return-to-lobby-button"]')!.click();
+    await flushPromises();
+
+    expect(requestStop).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-role="game-exit-dialog"]')?.classList.contains('hidden')).toBe(false);
+
+    host.querySelector<HTMLButtonElement>('[data-role="cancel-exit-button"]')!.click();
+    await flushPromises();
+
+    expect(requestStop).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-role="game-session"]')).not.toBeNull();
+    expect(host.querySelector('[data-role="game-exit-dialog"]')?.classList.contains('hidden')).toBe(true);
+
+    host.querySelector<HTMLButtonElement>('[data-role="return-to-lobby-button"]')!.click();
+    host.querySelector<HTMLButtonElement>('[data-role="confirm-exit-button"]')!.click();
     await flushPromises();
 
     expect(requestStop).toHaveBeenCalledWith({
@@ -367,9 +429,22 @@ describe('create-game-shell', () => {
       key: 'Escape'
     }));
     await flushPromises();
+
+    expect(requestStop).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-role="game-exit-dialog"]')?.classList.contains('hidden')).toBe(false);
+
+    host.querySelector<HTMLButtonElement>('[data-role="confirm-exit-button"]')!.click();
+    await flushPromises();
+
     host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
     await flushPromises();
     window.dispatchEvent(new Event('popstate'));
+    await flushPromises();
+
+    expect(requestStop).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('[data-role="game-exit-dialog"]')?.classList.contains('hidden')).toBe(false);
+
+    host.querySelector<HTMLButtonElement>('[data-role="confirm-exit-button"]')!.click();
     await flushPromises();
 
     expect(requestStop).toHaveBeenNthCalledWith(1, {
@@ -380,6 +455,38 @@ describe('create-game-shell', () => {
       reason: 'return-to-lobby',
       source: 'browser-back'
     });
+  });
+
+  test('escape closes an open exit confirmation without stopping the game', async () => {
+    const host = document.createElement('div');
+    const requestStop = vi.fn(async () => ({
+      status: 'stopped' as const
+    }));
+    const shell = createGameShell({
+      apiClient: createApiClientStub(),
+      authStorage: createMemoryAuthStorage('token-1'),
+      gameAppFactory: () => createRenderAppStub({
+        requestStop
+      }),
+      host,
+      resourceManagerFactory: () => createResourceManagerStub()
+    });
+
+    await shell.start();
+    host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+    await flushPromises();
+    host.querySelector<HTMLButtonElement>('[data-role="return-to-lobby-button"]')!.click();
+
+    expect(host.querySelector('[data-role="game-exit-dialog"]')?.classList.contains('hidden')).toBe(false);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Escape'
+    }));
+    await flushPromises();
+
+    expect(requestStop).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-role="game-session"]')).not.toBeNull();
+    expect(host.querySelector('[data-role="game-exit-dialog"]')?.classList.contains('hidden')).toBe(true);
   });
 
   test('cancelled game stop keeps the user in the game session', async () => {
@@ -401,10 +508,12 @@ describe('create-game-shell', () => {
     host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
     await flushPromises();
     host.querySelector<HTMLButtonElement>('[data-role="return-to-lobby-button"]')!.click();
+    host.querySelector<HTMLButtonElement>('[data-role="confirm-exit-button"]')!.click();
     await flushPromises();
 
     expect(host.querySelector('[data-role="game-session"]')).not.toBeNull();
     expect(host.textContent).toContain('Save is still running.');
+    expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('error');
     expect(host.querySelector('[data-role="game-cartridge-list"]')).toBeNull();
   });
 

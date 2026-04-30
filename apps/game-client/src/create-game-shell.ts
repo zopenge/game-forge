@@ -20,9 +20,11 @@ import type { gameClientMessages } from './i18n/game-client-messages';
 import { mapGameClientError } from './i18n/map-game-client-error';
 import type { WalletClient } from './wallet-client';
 import { createWalletClient } from './wallet-client';
-import { renderGameSessionView } from './views/game-session-view';
+import { renderGameSessionView, type GameSessionChromeState } from './views/game-session-view';
 import { renderLobbyView } from './views/lobby-view';
 import { renderLoginView } from './views/login-view';
+
+type GameSessionExitIntentSource = Exclude<RuntimeStopSource, 'session'>;
 
 export interface GameShell {
   resize(): void;
@@ -81,6 +83,9 @@ export const createGameShell = ({
   let currentWalletErrorMessage: string | undefined;
   let currentWalletAssets: WalletAssetSnapshot | undefined;
   let gameApp: RenderApp | undefined;
+  let gameSessionChromeHideTimer: number | undefined;
+  let gameSessionChromeState: GameSessionChromeState = 'hidden';
+  let pendingExitIntentSource: GameSessionExitIntentSource | undefined;
   let selectedGameCartridgeId = gameCartridges[0]?.id;
   let stopGameSessionListeners: () => void = () => undefined;
   let stopWalletAccountListener: () => void = () => undefined;
@@ -103,10 +108,89 @@ export const createGameShell = ({
   const resetGameSessionListeners = () => {
     stopGameSessionListeners();
     stopGameSessionListeners = () => undefined;
+    if (gameSessionChromeHideTimer !== undefined) {
+      window.clearTimeout(gameSessionChromeHideTimer);
+      gameSessionChromeHideTimer = undefined;
+    }
+  };
+
+  const updateGameSessionChrome = (state: GameSessionChromeState) => {
+    gameSessionChromeState = state;
+
+    const gameSession = host.querySelector<HTMLElement>('[data-role="game-session"]');
+    const controls = host.querySelector<HTMLElement>('[data-role="game-session-controls"]');
+
+    gameSession?.setAttribute('data-chrome-state', state);
+
+    if (!controls) {
+      return;
+    }
+
+    controls.classList.remove('visible', 'hidden', 'confirming', 'error');
+    controls.classList.add(state);
+  };
+
+  const clearGameSessionChromeHideTimer = () => {
+    if (gameSessionChromeHideTimer === undefined) {
+      return;
+    }
+
+    window.clearTimeout(gameSessionChromeHideTimer);
+    gameSessionChromeHideTimer = undefined;
+  };
+
+  const scheduleGameSessionChromeHide = () => {
+    clearGameSessionChromeHideTimer();
+
+    if (gameSessionChromeState !== 'visible') {
+      return;
+    }
+
+    gameSessionChromeHideTimer = window.setTimeout(() => {
+      updateGameSessionChrome('hidden');
+      gameSessionChromeHideTimer = undefined;
+    }, 2000);
+  };
+
+  const showGameSessionChrome = () => {
+    if (!gameApp || gameSessionChromeState === 'confirming' || gameSessionChromeState === 'error') {
+      return;
+    }
+
+    updateGameSessionChrome('visible');
+    scheduleGameSessionChromeHide();
+  };
+
+  const hideExitConfirmation = () => {
+    pendingExitIntentSource = undefined;
+    host.querySelector<HTMLElement>('[data-role="game-exit-dialog"]')?.classList.add('hidden');
+
+    if (!gameApp || gameSessionChromeState === 'error') {
+      return;
+    }
+
+    updateGameSessionChrome('visible');
+    scheduleGameSessionChromeHide();
+  };
+
+  const showExitConfirmation = (source: GameSessionExitIntentSource) => {
+    if (!gameApp) {
+      return;
+    }
+
+    pendingExitIntentSource = source;
+    clearGameSessionChromeHideTimer();
+    updateGameSessionChrome('confirming');
+    host.querySelector<HTMLElement>('[data-role="game-exit-dialog"]')?.classList.remove('hidden');
+    host.querySelector<HTMLButtonElement>('[data-role="cancel-exit-button"]')?.focus();
   };
 
   const showGameStopError = (message: string) => {
     currentGameStopErrorMessage = message;
+    pendingExitIntentSource = undefined;
+    clearGameSessionChromeHideTimer();
+    updateGameSessionChrome('error');
+    host.querySelector<HTMLElement>('[data-role="game-exit-dialog"]')?.classList.add('hidden');
     const errorElement = host.querySelector<HTMLElement>('[data-role="game-session-error"]');
 
     if (!errorElement) {
@@ -122,6 +206,8 @@ export const createGameShell = ({
     gameApp?.stop();
     gameApp = undefined;
     currentGameStopErrorMessage = undefined;
+    pendingExitIntentSource = undefined;
+    gameSessionChromeState = 'hidden';
   };
 
   const requestGameStop = async (request: RuntimeStopRequest) => {
@@ -153,12 +239,14 @@ export const createGameShell = ({
     resetGameSessionListeners();
     gameApp = undefined;
     currentGameStopErrorMessage = undefined;
+    pendingExitIntentSource = undefined;
+    gameSessionChromeState = 'hidden';
     renderLobby();
 
     return result;
   };
 
-  const requestReturnToLobby = async (source: RuntimeStopSource) => {
+  const requestReturnToLobby = async (source: GameSessionExitIntentSource) => {
     await requestGameStop({
       reason: 'return-to-lobby',
       source
@@ -185,39 +273,76 @@ export const createGameShell = ({
   const bindGameSessionControls = () => {
     resetGameSessionListeners();
 
+    const cancelExitButton = host.querySelector<HTMLButtonElement>('[data-role="cancel-exit-button"]');
+    const confirmExitButton = host.querySelector<HTMLButtonElement>('[data-role="confirm-exit-button"]');
     const returnButton = host.querySelector<HTMLButtonElement>('[data-role="return-to-lobby-button"]');
     const handleReturnButtonClick = () => {
-      void requestReturnToLobby('platform-button');
+      showExitConfirmation('platform-button');
+    };
+    const handleCancelExitClick = () => {
+      hideExitConfirmation();
+    };
+    const handleConfirmExitClick = () => {
+      const source = pendingExitIntentSource ?? 'platform-button';
+      void requestReturnToLobby(source);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        showGameSessionChrome();
+        return;
+      }
+
       if (event.key !== 'Escape') {
         return;
       }
 
       event.preventDefault();
-      void requestReturnToLobby('keyboard');
+
+      if (pendingExitIntentSource) {
+        hideExitConfirmation();
+        return;
+      }
+
+      showExitConfirmation('keyboard');
     };
     const handlePopState = () => {
-      void requestReturnToLobby('browser-back');
+      showExitConfirmation('browser-back');
+    };
+    const handleRevealIntent = () => {
+      showGameSessionChrome();
     };
 
+    cancelExitButton?.addEventListener('click', handleCancelExitClick);
+    confirmExitButton?.addEventListener('click', handleConfirmExitClick);
     returnButton?.addEventListener('click', handleReturnButtonClick);
+    window.addEventListener('focusin', handleRevealIntent);
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('mousemove', handleRevealIntent);
     window.addEventListener('popstate', handlePopState);
+    window.addEventListener('touchstart', handleRevealIntent);
 
     stopGameSessionListeners = () => {
+      cancelExitButton?.removeEventListener('click', handleCancelExitClick);
+      confirmExitButton?.removeEventListener('click', handleConfirmExitClick);
       returnButton?.removeEventListener('click', handleReturnButtonClick);
+      window.removeEventListener('focusin', handleRevealIntent);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mousemove', handleRevealIntent);
       window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('touchstart', handleRevealIntent);
     };
   };
 
   const renderGameSession = () => {
+    gameSessionChromeState = 'visible';
+    pendingExitIntentSource = undefined;
     host.innerHTML = renderGameSessionView({
+      chromeState: gameSessionChromeState,
       errorMessage: currentGameStopErrorMessage,
       t: i18n.t
     });
     bindGameSessionControls();
+    scheduleGameSessionChromeHide();
 
     try {
       window.history.pushState({

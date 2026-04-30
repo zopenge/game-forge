@@ -215,7 +215,7 @@ Owns environment-facing platform helpers.
 - When the player starts a cartridge, the shell creates `GameCartridgeContext` with player identity, local assets, wallet assets, i18n, resources, and platform services.
 - Before launch, the shell merges `@game-forge/shared-resources` records with the selected cartridge's private resources and preloads required resources.
 - If resource preload fails, the player stays in the lobby and sees a localized load error.
-- During game play, the shell owns platform navigation such as return-to-lobby and passes stop requests to the game through `RuntimeModule.onStopRequested()`.
+- During game play, the shell owns transient platform navigation such as return-to-lobby, confirms player-initiated exits, and passes stop requests to the game through `RuntimeModule.onStopRequested()`.
 - v1 supports `scene-graph-3d` cartridges through `RuntimeModule<GraphicsRenderScene>`.
 - v1 exposes `services.networking.isAvailable === false` as the reserved location for later networking support.
 

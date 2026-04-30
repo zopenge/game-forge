@@ -128,7 +128,8 @@ The repository currently treats ESLint warnings as failures through the root lin
 - cartridge-private resource files belong under `packages/games/<game-id>/assets/`
 - cartridge code should read resources through `GameCartridgeContext.resources`
 - cartridges should respond to platform session stop requests through `RuntimeModule.onStopRequested()` when they need to save, settle, or cancel exit
-- cartridges should not draw platform navigation controls such as the return-to-lobby button
+- cartridges should not draw platform navigation controls such as the return-to-lobby button or exit confirmation dialog
+- the game-client shell owns transient game-session controls and confirms player-initiated exits before calling `RenderApp.requestStop()`
 - v1 networking is only a reserved service location; cartridges should not implement WebRTC or matchmaking directly
 
 ### Resource Loading

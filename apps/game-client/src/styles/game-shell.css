@@ -163,7 +163,7 @@ button[disabled] {
   min-height: 100vh;
 }
 
-.game-session-overlay {
+.game-session-controls {
   position: fixed;
   top: 20px;
   left: 20px;
@@ -171,11 +171,25 @@ button[disabled] {
   display: grid;
   gap: 12px;
   max-width: min(360px, calc(100vw - 40px));
+  opacity: 0;
   pointer-events: none;
+  transform: translateY(-8px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
-.game-return-button,
-.game-session-error {
+.game-session-controls.visible,
+.game-session-controls.confirming,
+.game-session-controls.error {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.game-session-controls.visible .game-return-button,
+.game-session-controls.confirming .game-return-button,
+.game-session-controls.error .game-return-button,
+.game-session-controls.error .game-session-error {
   pointer-events: auto;
 }
 
@@ -195,6 +209,44 @@ button[disabled] {
   background: rgba(50, 8, 18, 0.72);
   box-shadow: 0 14px 36px rgba(1, 7, 17, 0.28);
   backdrop-filter: blur(14px);
+}
+
+.game-exit-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(1, 7, 17, 0.64);
+  backdrop-filter: blur(10px);
+}
+
+.game-exit-dialog.hidden {
+  display: none;
+}
+
+.game-exit-dialog-panel {
+  display: grid;
+  gap: 16px;
+  width: min(420px, 100%);
+  padding: 24px;
+  border: 1px solid rgba(152, 194, 255, 0.22);
+  border-radius: 22px;
+  background: rgba(5, 14, 28, 0.94);
+  box-shadow: 0 24px 70px rgba(1, 7, 17, 0.56);
+}
+
+.game-exit-dialog-panel p {
+  margin: 0;
+  color: #bfd3f2;
+  line-height: 1.55;
+}
+
+.game-exit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .lobby-card {
