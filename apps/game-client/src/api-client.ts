@@ -58,7 +58,14 @@ export interface ApiClient {
 }
 
 export interface ApiClientOptions {
+  readonly baseUrl?: string;
   readonly fetchImpl?: typeof fetch;
+}
+
+interface GameForgeImportMeta extends ImportMeta {
+  readonly env?: {
+    readonly VITE_GAME_FORGE_API_BASE_URL?: string;
+  };
 }
 
 const assertSuccess = async (response: Response) => {
@@ -78,11 +85,16 @@ const assertSuccess = async (response: Response) => {
   throw new Error(message);
 };
 
+const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
+
 export const createApiClient = ({
+  baseUrl = (import.meta as GameForgeImportMeta).env?.VITE_GAME_FORGE_API_BASE_URL,
   fetchImpl = fetch
 }: ApiClientOptions = {}): ApiClient => {
+  const resolvedBaseUrl = baseUrl ? trimTrailingSlash(baseUrl) : '';
+  const resolvePath = (path: string) => `${resolvedBaseUrl}${path}`;
   const authorizedRequest = async <T>(path: string, token: string, init?: RequestInit) => {
-    const response = await fetchImpl(path, {
+    const response = await fetchImpl(resolvePath(path), {
       ...init,
       headers: {
         'content-type': 'application/json',
@@ -100,7 +112,7 @@ export const createApiClient = ({
     getCurrentUser: (token) => authorizedRequest<CurrentUser>('/me', token),
     getWalletAssets: (token) => authorizedRequest<WalletAssetSnapshot>('/wallet-assets', token),
     login: async (username) => {
-      const response = await fetchImpl('/auth/login', {
+      const response = await fetchImpl(resolvePath('/auth/login'), {
         body: JSON.stringify({ username }),
         headers: {
           'content-type': 'application/json'
@@ -112,7 +124,7 @@ export const createApiClient = ({
       return response.json() as Promise<LoginResponse>;
     },
     loginWithWallet: async (payload) => {
-      const response = await fetchImpl('/auth/wallet/login', {
+      const response = await fetchImpl(resolvePath('/auth/wallet/login'), {
         body: JSON.stringify(payload),
         headers: {
           'content-type': 'application/json'
@@ -124,7 +136,7 @@ export const createApiClient = ({
       return response.json() as Promise<WalletLoginResponse>;
     },
     requestWalletChallenge: async (payload) => {
-      const response = await fetchImpl('/auth/wallet/challenge', {
+      const response = await fetchImpl(resolvePath('/auth/wallet/challenge'), {
         body: JSON.stringify(payload),
         headers: {
           'content-type': 'application/json'

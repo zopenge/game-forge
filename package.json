@@ -5,6 +5,12 @@
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "build": "pnpm -r --if-present build",
+    "build:admin-panel": "pnpm --filter @game-forge/admin-panel build",
+    "build:backend": "pnpm --filter @game-forge/backend build",
+    "build:game-client": "pnpm --filter @game-forge/game-client build",
+    "deploy:build:admin-panel": "pnpm install --frozen-lockfile && pnpm build:admin-panel",
+    "deploy:build:game-client": "pnpm install --frozen-lockfile && pnpm build:game-client",
+    "deploy:start:backend": "pnpm --filter @game-forge/backend start",
     "dev": "node ./scripts/run-many.mjs",
     "start": "pnpm start:game-client",
     "start:admin-panel": "pnpm --filter @game-forge/admin-panel start",

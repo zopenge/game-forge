@@ -39,6 +39,7 @@ pnpm dev:game-client:logged
 - It starts `backend`, `game-client`, and `admin-panel` together.
 - It prefers ports `3001`, `5173`, and `5174`, but automatically uses the next available port when a default is busy.
 - It passes the selected backend URL into the game client Vite proxy so API routes continue to work after a port fallback.
+- It loads root `.env` values for local development before starting managed services.
 - It opens browser pages automatically when browser-facing services are ready.
 - `Ctrl+C` in the root terminal should stop the managed development stack together.
 - Set `GAME_FORGE_OPEN_BROWSER=0` to disable automatic browser opening.
@@ -48,6 +49,21 @@ PowerShell example:
 ```powershell
 $env:GAME_FORGE_OPEN_BROWSER='0'; pnpm dev
 ```
+
+## Environment Variables
+
+- Copy `.env.example` to `.env` for local development.
+- Do not commit real `.env` files; `.gitignore` ignores `.env` and `.env.*` while allowing `.env.example`.
+- Keep production values such as `JWT_SECRET` and RPC URLs in the Render or Vercel environment-variable dashboard.
+- `VITE_GAME_FORGE_API_BASE_URL` tells static frontends where the backend API lives; leave it as `http://127.0.0.1:3001` locally or set it to the hosted backend URL in production.
+- `HOST=0.0.0.0` is required for hosted backend services such as Render; local development should keep `HOST=127.0.0.1`.
+
+## Deployment
+
+- `render.yaml` is the full-stack deployment path for the backend, game client, and admin panel.
+- Vercel configs live in `apps/game-client/vercel.json` and `apps/admin-panel/vercel.json`; they deploy only static frontends and must point `VITE_GAME_FORGE_API_BASE_URL` to an external backend such as Render.
+- Shared deployment commands live in the root `package.json` as `build:backend`, `build:game-client`, `build:admin-panel`, `deploy:build:game-client`, `deploy:build:admin-panel`, and `deploy:start:backend`.
+- The current backend uses in-memory storage, so hosted demo data is lost when the service restarts.
 
 ## Required Quality Gates
 

@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: game-forge-backend
+    runtime: node
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile && pnpm build:backend
+    startCommand: pnpm deploy:start:backend
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: JWT_SECRET
+        generateValue: true
+      - key: EVM_RPC_URL
+        value: https://ethereum.publicnode.com
+      - key: DEFAULT_EVM_CHAIN_ID
+        value: 1
+      - key: WALLET_AUTH_MESSAGE_PREFIX
+        value: Sign this message to access Game Forge.
+
+  - type: web
+    name: game-forge-game-client
+    runtime: static
+    plan: free
+    buildCommand: pnpm deploy:build:game-client
+    staticPublishPath: apps/game-client/dist
+    envVars:
+      - key: VITE_GAME_FORGE_API_BASE_URL
+        value: https://game-forge-backend.onrender.com
+
+  - type: web
+    name: game-forge-admin-panel
+    runtime: static
+    plan: free
+    buildCommand: pnpm deploy:build:admin-panel
+    staticPublishPath: apps/admin-panel/dist
+    envVars:
+      - key: VITE_GAME_FORGE_API_BASE_URL
+        value: https://game-forge-backend.onrender.com

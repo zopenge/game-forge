@@ -1,0 +1,4 @@
+{
+  "buildCommand": "cd ../.. && pnpm deploy:build:game-client",
+  "outputDirectory": "dist"
+}

@@ -11,6 +11,12 @@ Install dependencies from the repository root:
 pnpm install
 ```
 
+Create a local environment file from the example:
+
+```bash
+cp .env.example .env
+```
+
 Run the main local development stack:
 
 ```bash
@@ -24,6 +30,16 @@ This starts:
 - admin panel on `http://127.0.0.1:5174`
 
 The root development runner prefers these default ports, automatically moves a service to the next available port when a default is busy, opens browser pages when services are ready, and lets you stop the whole stack with `Ctrl+C`.
+
+## Deployment
+
+The repository includes deployment configuration for Render and Vercel:
+
+- `render.yaml` deploys the backend, game client, and admin panel together.
+- `apps/game-client/vercel.json` deploys the game client as a Vercel static frontend.
+- `apps/admin-panel/vercel.json` deploys the admin panel as a Vercel static frontend.
+
+Use `.env` only for local development. Production values such as `JWT_SECRET` and `VITE_GAME_FORGE_API_BASE_URL` should be configured in the Render or Vercel dashboard, not committed to git. Vercel frontends should point `VITE_GAME_FORGE_API_BASE_URL` at the hosted backend URL.
 
 ## Documentation
 

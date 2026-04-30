@@ -1,4 +1,5 @@
 import console from 'node:console';
+import { existsSync } from 'node:fs';
 import net from 'node:net';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -10,6 +11,11 @@ import { resolveManagedCommands } from './run-many-ports.mjs';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(scriptDirectory, '..');
+const workspaceEnvPath = resolve(workspaceRoot, '.env');
+
+if (existsSync(workspaceEnvPath) && typeof process.loadEnvFile === 'function') {
+  process.loadEnvFile(workspaceEnvPath);
+}
 
 const managedCommands = [
   {

@@ -19,6 +19,8 @@ game-forge/
   tests/
   docs/
   rules/
+  render.yaml
+  .env.example
   package.json
   pnpm-workspace.yaml
   tsconfig.base.json
@@ -302,6 +304,13 @@ Root ESLint flat config for TypeScript and repository-wide lint behavior.
 ### `rules/`
 
 Persistent repository rules for humans and coding agents.
+
+### Deployment Files
+
+- `.env.example`: local and hosted environment-variable template; copy to ignored `.env` for local development.
+- `render.yaml`: Render Blueprint for the backend, game client, and admin panel.
+- `apps/game-client/vercel.json`: Vercel static deployment config for the game client.
+- `apps/admin-panel/vercel.json`: Vercel static deployment config for the admin panel.
 
 ### `docs/`
 

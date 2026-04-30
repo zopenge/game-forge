@@ -13,6 +13,7 @@ export default defineConfig({
       }
     }
   },
+  envDir: '../..',
   server: {
     host: '127.0.0.1',
     port,
@@ -20,7 +21,8 @@ export default defineConfig({
     proxy: {
       '/assets': backendUrl,
       '/auth': backendUrl,
-      '/me': backendUrl
+      '/me': backendUrl,
+      '/wallet-assets': backendUrl
     }
   }
 });
