@@ -1,0 +1,4 @@
+{
+  "buildCommand": "pnpm build:game-client",
+  "outputDirectory": "apps/game-client/dist"
+}

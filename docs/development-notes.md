@@ -61,7 +61,9 @@ $env:GAME_FORGE_OPEN_BROWSER='0'; pnpm dev
 ## Deployment
 
 - `render.yaml` is the full-stack deployment path for the backend, game client, and admin panel.
-- Vercel configs live in `apps/game-client/vercel.json` and `apps/admin-panel/vercel.json`; they deploy only static frontends and must point `VITE_GAME_FORGE_API_BASE_URL` to an external backend such as Render.
+- `vercel.json` supports a Vercel project connected at the repository root and deploys the game client from `apps/game-client/dist`.
+- Additional Vercel configs live in `apps/game-client/vercel.json` and `apps/admin-panel/vercel.json`; they support projects whose root directory is set to the matching app.
+- Vercel deployments are static frontends and must point `VITE_GAME_FORGE_API_BASE_URL` to an external backend such as Render for API flows.
 - Shared deployment commands live in the root `package.json` as `build:backend`, `build:game-client`, `build:admin-panel`, `deploy:build:game-client`, `deploy:build:admin-panel`, and `deploy:start:backend`.
 - The current backend uses in-memory storage, so hosted demo data is lost when the service restarts.
 

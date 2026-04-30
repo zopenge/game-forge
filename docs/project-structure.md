@@ -20,6 +20,7 @@ game-forge/
   docs/
   rules/
   render.yaml
+  vercel.json
   .env.example
   package.json
   pnpm-workspace.yaml
@@ -309,6 +310,7 @@ Persistent repository rules for humans and coding agents.
 
 - `.env.example`: local and hosted environment-variable template; copy to ignored `.env` for local development.
 - `render.yaml`: Render Blueprint for the backend, game client, and admin panel.
+- `vercel.json`: repository-root Vercel config for deploying the game client when Vercel is connected to the monorepo root.
 - `apps/game-client/vercel.json`: Vercel static deployment config for the game client.
 - `apps/admin-panel/vercel.json`: Vercel static deployment config for the admin panel.
 

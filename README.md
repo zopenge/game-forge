@@ -36,6 +36,7 @@ The root development runner prefers these default ports, automatically moves a s
 The repository includes deployment configuration for Render and Vercel:
 
 - `render.yaml` deploys the backend, game client, and admin panel together.
+- `vercel.json` deploys the game client when a Vercel project is connected to the repository root.
 - `apps/game-client/vercel.json` deploys the game client as a Vercel static frontend.
 - `apps/admin-panel/vercel.json` deploys the admin panel as a Vercel static frontend.
 

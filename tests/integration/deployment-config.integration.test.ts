@@ -43,9 +43,14 @@ describe('deployment config', () => {
   });
 
   test('keeps Vercel frontend configs minimal', () => {
+    const rootConfig = JSON.parse(readRepoFile('vercel.json')) as Record<string, unknown>;
     const gameClientConfig = JSON.parse(readRepoFile('apps/game-client/vercel.json')) as Record<string, unknown>;
     const adminPanelConfig = JSON.parse(readRepoFile('apps/admin-panel/vercel.json')) as Record<string, unknown>;
 
+    expect(rootConfig).toEqual({
+      buildCommand: 'pnpm build:game-client',
+      outputDirectory: 'apps/game-client/dist'
+    });
     expect(gameClientConfig).toEqual({
       buildCommand: 'cd ../.. && pnpm deploy:build:game-client',
       outputDirectory: 'dist'
