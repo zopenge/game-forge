@@ -12,10 +12,13 @@ import { assetsRoutes } from './routes/assets';
 import { meRoutes } from './routes/me';
 import { walletAssetsRoutes } from './routes/wallet-assets';
 import { walletAuthRoutes } from './routes/wallet-auth';
+import { wechatAuthRoutes } from './routes/wechat-auth';
 import { createAssetService } from './services/asset-service';
 import { createAuthService } from './services/auth-service';
 import { createWalletAssetService } from './services/wallet-asset-service';
 import { createWalletAuthService } from './services/wallet-auth-service';
+import { createWechatAuthClient, type WechatAuthClient } from './services/wechat-auth-client';
+import { createWechatAuthService } from './services/wechat-auth-service';
 import { createAssetStore, type AssetStore } from './storage/asset-store';
 import { createUserStore, type UserStore } from './storage/user-store';
 import { createWalletChallengeStore, type WalletChallengeStore } from './storage/wallet-challenge-store';
@@ -27,6 +30,7 @@ export interface BuildAppOptions {
   readonly walletChallengeStore?: WalletChallengeStore;
   readonly walletRegistry?: ServerWalletRegistry;
   readonly walletRpcUrl?: string;
+  readonly wechatAuthClient?: WechatAuthClient;
 }
 
 export const defaultJwtSecret = 'game-forge-dev-secret';
@@ -37,7 +41,8 @@ export const buildApp = async ({
   userStore = createUserStore(),
   walletChallengeStore = createWalletChallengeStore(),
   walletRegistry,
-  walletRpcUrl = process.env.EVM_RPC_URL ?? 'https://ethereum.publicnode.com'
+  walletRpcUrl = process.env.EVM_RPC_URL ?? 'https://ethereum.publicnode.com',
+  wechatAuthClient = createWechatAuthClient()
 }: BuildAppOptions = {}): Promise<FastifyInstance> => {
   const app = fastify();
 
@@ -68,6 +73,11 @@ export const buildApp = async ({
     walletChallengeStore,
     walletRegistry: resolvedWalletRegistry
   });
+  const wechatAuthService = createWechatAuthService({
+    createToken: authService.signToken,
+    userStore,
+    wechatAuthClient
+  });
   const walletAssetService = createWalletAssetService({
     walletRegistry: resolvedWalletRegistry
   });
@@ -75,6 +85,10 @@ export const buildApp = async ({
 
   await app.register(authRoutes, { authService });
   await app.register(walletAuthRoutes, { walletAuthService });
+  await app.register(wechatAuthRoutes, {
+    authMiddleware,
+    wechatAuthService
+  });
   await app.register(meRoutes, { authMiddleware });
   await app.register(assetsRoutes, {
     assetService,

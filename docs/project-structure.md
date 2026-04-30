@@ -64,11 +64,22 @@ Key files:
 - `src/main.ts`: browser entry
 - `src/create-admin-panel-app.ts`: app assembly and markup generation
 
+### `apps/wechat-mini-program`
+
+WeChat Mini Program shell.
+
+- Uses automatic WeChat login through `wx.login()`
+- Exchanges WeChat codes with the backend for a Game Forge JWT
+- Stores WeChat-only platform access in `src/platform`
+- Keeps phone binding as an opt-in follow-up step instead of a login gate
+- Does not own game cartridge implementation details
+
 ### `apps/backend`
 
 Fastify backend for authentication and asset management.
 
 - Supports username login and wallet login
+- Supports WeChat Mini Program automatic login and optional phone binding
 - Issues JWTs for authenticated sessions
 - Exposes local game assets and wallet-backed asset views through separate APIs
 
@@ -211,6 +222,8 @@ Owns environment-facing platform helpers.
 
 - browser host lookup and creation
 
+WeChat Mini Program APIs stay in `apps/wechat-mini-program/src/platform` while only that app uses them. Promote a shared WeChat adapter package only if another WeChat target needs the same code.
+
 ## Game Cartridge Flow
 
 - `apps/game-client/src/game-cartridges.ts` imports built-in cartridges and registers them with `createGameCartridgeRegistry()`.
@@ -309,6 +322,7 @@ Persistent repository rules for humans and coding agents.
 ### Deployment Files
 
 - `.env.example`: local and hosted environment-variable template; copy to ignored `.env` for local development.
+- `.render.env.example`: Render backend environment-variable template; generate ignored local values with `pnpm create:render-env`.
 - `render.yaml`: Render Blueprint for the backend, game client, and admin panel.
 - `vercel.json`: repository-root Vercel config for deploying the game client when Vercel is connected to the monorepo root.
 - `apps/game-client/vercel.json`: Vercel static deployment config for the game client.
@@ -328,4 +342,5 @@ Human-readable repository documentation, including this file.
 - Rendering abstraction is narrow to avoid unnecessary performance overhead
 - Resource loading is centralized in `@game-forge/resources` while actual game files stay near their cartridge
 - Multiplayer transport should be injected as a platform service rather than implemented separately by each cartridge
+- WeChat Mini Program authentication should end in the same Game Forge JWT flow as other auth methods
 - Repository rules are kept under `rules/`, not hidden only in chat history

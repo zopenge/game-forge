@@ -65,7 +65,9 @@ export const renderLobbyView = ({
     : `<li class="lobby-empty">${t('lobby.wallet.empty')}</li>`;
   const authMethodKey = user.authMethod === 'wallet'
     ? 'common.authMethod.wallet'
-    : 'common.authMethod.username';
+    : user.authMethod === 'wechat'
+      ? 'common.authMethod.wechat'
+      : 'common.authMethod.username';
   const gameCartridgeMarkup = gameCartridges.length > 0
     ? gameCartridges.map((cartridge) => `
         <button

@@ -20,6 +20,8 @@ describe('deployment config', () => {
       'EVM_RPC_URL',
       'DEFAULT_EVM_CHAIN_ID',
       'WALLET_AUTH_MESSAGE_PREFIX',
+      'WECHAT_APP_ID',
+      'WECHAT_APP_SECRET',
       'VITE_GAME_FORGE_API_BASE_URL',
       'GAME_FORGE_OPEN_BROWSER'
     ];
@@ -39,7 +41,9 @@ describe('deployment config', () => {
       'JWT_SECRET',
       'EVM_RPC_URL',
       'DEFAULT_EVM_CHAIN_ID',
-      'WALLET_AUTH_MESSAGE_PREFIX'
+      'WALLET_AUTH_MESSAGE_PREFIX',
+      'WECHAT_APP_ID',
+      'WECHAT_APP_SECRET'
     ];
 
     expect(gitignore).toContain('.render.env.local');
@@ -74,6 +78,8 @@ describe('deployment config', () => {
       expect(generatedEnv).toContain(
         'WALLET_AUTH_MESSAGE_PREFIX=Sign this message to access Game Forge.'
       );
+      expect(generatedEnv).toContain('WECHAT_APP_ID=replace-with-wechat-mini-program-app-id');
+      expect(generatedEnv).toContain('WECHAT_APP_SECRET=replace-with-wechat-mini-program-app-secret');
       expect(generatedEnv).toMatch(/JWT_SECRET=[a-f0-9]{64}/u);
       expect(generatedEnv).not.toContain('replace-with-a-secure-render-secret');
       expect(generatedEnv.endsWith('\n')).toBe(false);

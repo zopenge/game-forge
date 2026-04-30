@@ -1,0 +1,6 @@
+{
+  "pages": ["src/pages/home/index"],
+  "window": {
+    "navigationBarTitleText": "Game Forge"
+  }
+}

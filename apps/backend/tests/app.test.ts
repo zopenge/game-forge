@@ -9,6 +9,33 @@ describe('backend app', () => {
   beforeEach(async () => {
     app = await buildApp({
       jwtSecret: 'test-secret',
+      wechatAuthClient: {
+        bindPhone: async (code) => {
+          if (code !== 'valid-phone-code') {
+            throw new Error('Invalid WeChat phone code.');
+          }
+
+          return {
+            phoneNumber: '13800138000'
+          };
+        },
+        login: async (code) => {
+          if (code === 'valid-wechat-code') {
+            return {
+              openId: 'openid-1',
+              unionId: 'unionid-1'
+            };
+          }
+
+          if (code === 'second-wechat-code') {
+            return {
+              openId: 'openid-2'
+            };
+          }
+
+          throw new Error('Invalid WeChat login code.');
+        }
+      },
       walletRegistry: createServerWalletRegistry([
         {
           chainKind: 'evm',
@@ -428,5 +455,119 @@ describe('backend app', () => {
       providerKind: 'metamask',
       walletAddress: '0xabc'
     });
+  });
+
+  test('wechat login creates a user without requiring phone binding', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      payload: {
+        code: 'valid-wechat-code'
+      },
+      url: '/auth/wechat/login'
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      phoneBound: false,
+      token: expect.any(String),
+      user: {
+        authMethod: 'wechat',
+        username: 'wechat-openid-1',
+        wechatOpenId: 'openid-1',
+        wechatUnionId: 'unionid-1'
+      },
+      userId: expect.stringMatching(/^user-/)
+    });
+  });
+
+  test('wechat login reuses the same user for the same openid', async () => {
+    const firstResponse = await app.inject({
+      method: 'POST',
+      payload: {
+        code: 'valid-wechat-code'
+      },
+      url: '/auth/wechat/login'
+    });
+    const secondResponse = await app.inject({
+      method: 'POST',
+      payload: {
+        code: 'valid-wechat-code'
+      },
+      url: '/auth/wechat/login'
+    });
+
+    expect(secondResponse.statusCode).toBe(200);
+    expect(secondResponse.json().userId).toBe(firstResponse.json().userId);
+  });
+
+  test('wechat login rejects missing or invalid codes', async () => {
+    const missingCodeResponse = await app.inject({
+      method: 'POST',
+      payload: {},
+      url: '/auth/wechat/login'
+    });
+    const invalidCodeResponse = await app.inject({
+      method: 'POST',
+      payload: {
+        code: 'invalid-wechat-code'
+      },
+      url: '/auth/wechat/login'
+    });
+
+    expect(missingCodeResponse.statusCode).toBe(400);
+    expect(invalidCodeResponse.statusCode).toBe(400);
+  });
+
+  test('wechat phone binding requires auth and updates only the current user', async () => {
+    const firstLoginResponse = await app.inject({
+      method: 'POST',
+      payload: {
+        code: 'valid-wechat-code'
+      },
+      url: '/auth/wechat/login'
+    });
+    const secondLoginResponse = await app.inject({
+      method: 'POST',
+      payload: {
+        code: 'second-wechat-code'
+      },
+      url: '/auth/wechat/login'
+    });
+    const unauthorizedResponse = await app.inject({
+      method: 'POST',
+      payload: {
+        code: 'valid-phone-code'
+      },
+      url: '/auth/wechat/bind-phone'
+    });
+    const bindPhoneResponse = await app.inject({
+      headers: {
+        authorization: `Bearer ${firstLoginResponse.json().token}`
+      },
+      method: 'POST',
+      payload: {
+        code: 'valid-phone-code'
+      },
+      url: '/auth/wechat/bind-phone'
+    });
+    const secondMeResponse = await app.inject({
+      headers: {
+        authorization: `Bearer ${secondLoginResponse.json().token}`
+      },
+      method: 'GET',
+      url: '/me'
+    });
+
+    expect(unauthorizedResponse.statusCode).toBe(401);
+    expect(bindPhoneResponse.statusCode).toBe(200);
+    expect(bindPhoneResponse.json()).toMatchObject({
+      phoneBound: true,
+      user: {
+        authMethod: 'wechat',
+        phoneNumber: '13800138000',
+        wechatOpenId: 'openid-1'
+      }
+    });
+    expect(secondMeResponse.json()).not.toHaveProperty('phoneNumber');
   });
 });

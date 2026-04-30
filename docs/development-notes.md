@@ -57,6 +57,7 @@ $env:GAME_FORGE_OPEN_BROWSER='0'; pnpm dev
 - Keep production values such as `JWT_SECRET` and RPC URLs in the Render or Vercel environment-variable dashboard.
 - `VITE_GAME_FORGE_API_BASE_URL` tells static frontends where the backend API lives; leave it as `http://127.0.0.1:3001` locally or set it to the hosted backend URL in production.
 - `HOST=0.0.0.0` is required for hosted backend services such as Render; local development should keep `HOST=127.0.0.1`.
+- `WECHAT_APP_ID` and `WECHAT_APP_SECRET` are backend-only values used to exchange WeChat Mini Program login and phone codes; never put the secret in mini program source.
 
 ## Deployment
 
@@ -93,6 +94,8 @@ JWT_SECRET=<random-local-generated-secret>
 EVM_RPC_URL=https://ethereum.publicnode.com
 DEFAULT_EVM_CHAIN_ID=1
 WALLET_AUTH_MESSAGE_PREFIX=Sign this message to access Game Forge.
+WECHAT_APP_ID=replace-with-wechat-mini-program-app-id
+WECHAT_APP_SECRET=replace-with-wechat-mini-program-app-secret
 ```
 
 Optional examples:

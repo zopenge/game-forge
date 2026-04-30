@@ -124,6 +124,19 @@ importers:
         specifier: workspace:*
         version: link:../../packages/wallet/evm
 
+  apps/wechat-mini-program:
+    dependencies:
+      '@game-forge/game-cartridge':
+        specifier: workspace:*
+        version: link:../../packages/game-cartridge
+      '@game-forge/resources':
+        specifier: workspace:*
+        version: link:../../packages/resources
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   packages/assets: {}
 
   packages/device: {}

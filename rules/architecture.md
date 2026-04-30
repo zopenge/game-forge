@@ -57,3 +57,11 @@
 - Do not write `kind`, `cache`, `bundle`, `group`, `priority`, or `preload: false` in v1 resource manifests.
 - Keep resource files under `assets/` and localization files under `translations/`.
 - Convert manifest paths with a bundler-provided URL map when resources are bundled; do not rely on dynamic runtime URL construction for packaged assets.
+
+## WeChat Mini Program Boundary
+
+- Keep WeChat Mini Program code under `apps/wechat-mini-program` until another WeChat target needs reuse.
+- Do not import or reference `wx` APIs from game cartridges, shared game packages, or Web apps.
+- Keep WeChat `appSecret` usage on the backend only; never put it in mini program source.
+- Use Game Forge JWTs after WeChat automatic login so platform-specific auth does not leak into cartridges.
+- Bind phone numbers after login only when a feature requires it; do not make phone binding the default login gate.

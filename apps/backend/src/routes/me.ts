@@ -17,12 +17,15 @@ export const meRoutes: FastifyPluginAsync<MeRoutesOptions> = async (
 
     return {
       authMethod: currentUser.authMethod,
+      phoneNumber: currentUser.phoneNumber,
       userId: currentUser.userId,
       username: currentUser.username,
       walletAddress: currentUser.walletAddress,
       walletChainId: currentUser.walletChainId,
       walletChainKind: currentUser.walletChainKind,
-      walletProviderKind: currentUser.walletProviderKind
+      walletProviderKind: currentUser.walletProviderKind,
+      wechatOpenId: currentUser.wechatOpenId,
+      wechatUnionId: currentUser.wechatUnionId
     };
   });
 };

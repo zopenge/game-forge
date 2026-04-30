@@ -1,6 +1,7 @@
 {
   "common.authMethod.username": "Username",
   "common.authMethod.wallet": "Wallet",
+  "common.authMethod.wechat": "WeChat",
   "common.locale.label": "Language",
   "common.locale.en-US": "English",
   "common.locale.zh-CN": "Simplified Chinese",

@@ -41,6 +41,7 @@ The repository includes deployment configuration for Render and Vercel:
 - `apps/admin-panel/vercel.json` deploys the admin panel as a Vercel static frontend.
 
 Use `.env` only for local development. Production values such as `JWT_SECRET` and `VITE_GAME_FORGE_API_BASE_URL` should be configured in the Render or Vercel dashboard, not committed to git. Vercel frontends should point `VITE_GAME_FORGE_API_BASE_URL` at the hosted backend URL.
+WeChat Mini Program backend values use `WECHAT_APP_ID` and `WECHAT_APP_SECRET`; keep the app secret only in backend or deployment environment variables.
 
 For a Render backend Web Service, create a local import file before configuring the Render `Environment` page:
 

@@ -29,7 +29,7 @@ export interface GameCartridgeContext<messageKey extends string = string> {
   }[];
   readonly i18n: GameCartridgeI18n<messageKey>;
   readonly player: {
-    readonly authMethod: 'username' | 'wallet';
+    readonly authMethod: 'username' | 'wallet' | 'wechat';
     readonly userId: string;
     readonly username: string;
     readonly walletAddress?: string;

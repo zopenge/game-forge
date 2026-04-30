@@ -32,7 +32,9 @@ const dotenvContent = [
   `JWT_SECRET=${jwtSecret}`,
   'EVM_RPC_URL=https://ethereum.publicnode.com',
   'DEFAULT_EVM_CHAIN_ID=1',
-  'WALLET_AUTH_MESSAGE_PREFIX=Sign this message to access Game Forge.'
+  'WALLET_AUTH_MESSAGE_PREFIX=Sign this message to access Game Forge.',
+  'WECHAT_APP_ID=replace-with-wechat-mini-program-app-id',
+  'WECHAT_APP_SECRET=replace-with-wechat-mini-program-app-secret'
 ].join('\n');
 
 mkdirSync(dirname(absoluteOutputPath), { recursive: true });

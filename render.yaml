@@ -16,6 +16,10 @@ services:
         value: 1
       - key: WALLET_AUTH_MESSAGE_PREFIX
         value: Sign this message to access Game Forge.
+      - key: WECHAT_APP_ID
+        sync: false
+      - key: WECHAT_APP_SECRET
+        sync: false
 
   - type: web
     name: game-forge-game-client
