@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - packages/games/*
   - packages/wallet/*
   - tests/e2e
   - tests/integration

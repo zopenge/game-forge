@@ -177,6 +177,10 @@ button[disabled] {
   background: rgba(9, 19, 36, 0.82);
 }
 
+.game-cartridge-section {
+  grid-column: 1 / -1;
+}
+
 .asset-list {
   list-style: none;
   padding: 0;
@@ -197,6 +201,64 @@ button[disabled] {
 
 .compact-form {
   gap: 10px;
+}
+
+.game-cartridge-list {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.game-cartridge-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  color: #eff6ff;
+  text-align: left;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--cartridge-color) 30%, transparent), rgba(255, 255, 255, 0.04)),
+    rgba(5, 14, 28, 0.78);
+}
+
+.game-cartridge-card.selected {
+  border-color: color-mix(in srgb, var(--cartridge-color) 72%, white);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cartridge-color) 28%, transparent);
+}
+
+.game-cartridge-media {
+  display: block;
+  height: 64px;
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, var(--cartridge-color), rgba(255, 255, 255, 0.12)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 8px, transparent 8px 16px);
+}
+
+.game-cartridge-copy,
+.game-cartridge-tags,
+.game-cartridge-capabilities {
+  display: grid;
+  gap: 6px;
+}
+
+.game-cartridge-copy span,
+.game-cartridge-capabilities {
+  color: #bfd3f2;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.game-cartridge-tags {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.game-cartridge-tags span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #dceeff;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 @media (max-width: 720px) {

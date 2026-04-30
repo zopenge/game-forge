@@ -1,0 +1,17 @@
+{
+  "name": "@game-forge/game-cartridge",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@game-forge/graphics": "workspace:*",
+    "@game-forge/i18n": "workspace:*",
+    "@game-forge/runtime": "workspace:*",
+    "@game-forge/wallet-core": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

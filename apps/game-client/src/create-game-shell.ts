@@ -1,3 +1,5 @@
+import type { GameCartridge, GameCartridgeContext } from '@game-forge/game-cartridge';
+import { createGameCartridgeRegistry } from '@game-forge/game-cartridge';
 import type { I18nStore, LocaleCode } from '@game-forge/i18n';
 import type { RenderApp } from '@game-forge/runtime';
 import type { BrowserWalletRegistry, WalletAssetSnapshot } from '@game-forge/wallet-core';
@@ -10,6 +12,7 @@ import { createApiClient } from './api-client';
 import type { AuthStorage } from './auth-storage';
 import { createAuthStorage } from './auth-storage';
 import { createGameClientApp } from './create-game-client-app';
+import { gameCartridges as defaultGameCartridges } from './game-cartridges';
 import { createGameClientI18n } from './i18n/create-game-client-i18n';
 import type { gameClientMessages } from './i18n/game-client-messages';
 import { mapGameClientError } from './i18n/map-game-client-error';
@@ -26,7 +29,12 @@ export interface GameShell {
 export interface GameShellOptions {
   readonly apiClient?: ApiClient;
   readonly authStorage?: AuthStorage;
-  readonly gameAppFactory?: (host: HTMLElement) => RenderApp;
+  readonly gameAppFactory?: (
+    host: HTMLElement,
+    cartridge: GameCartridge,
+    context: GameCartridgeContext
+  ) => RenderApp;
+  readonly gameCartridges?: readonly GameCartridge[];
   readonly host: HTMLElement;
   readonly i18n?: I18nStore<typeof gameClientMessages>;
   readonly walletClient?: WalletClient;
@@ -36,7 +44,12 @@ export interface GameShellOptions {
 export const createGameShell = ({
   apiClient = createApiClient(),
   authStorage = createAuthStorage(),
-  gameAppFactory = (host) => createGameClientApp({ host }),
+  gameAppFactory = (host, cartridge, cartridgeContext) => createGameClientApp({
+    cartridge,
+    cartridgeContext,
+    host
+  }),
+  gameCartridges = defaultGameCartridges,
   host,
   i18n = createGameClientI18n(),
   walletRegistry = createBrowserWalletRegistry([createEvmBrowserWalletAdapter()]),
@@ -59,6 +72,7 @@ export const createGameShell = ({
   let currentWalletErrorMessage: string | undefined;
   let currentWalletAssets: WalletAssetSnapshot | undefined;
   let gameApp: RenderApp | undefined;
+  let selectedGameCartridgeId = gameCartridges[0]?.id;
   let stopWalletAccountListener: () => void = () => undefined;
   let stopWalletChainListener: () => void = () => undefined;
   let token = authStorage.readToken();
@@ -92,6 +106,7 @@ export const createGameShell = ({
     currentWalletAssets = undefined;
     gameApp?.stop();
     gameApp = undefined;
+    selectedGameCartridgeId = gameCartridges[0]?.id;
     resetWalletListeners();
   };
 
@@ -167,13 +182,36 @@ export const createGameShell = ({
       return;
     }
 
+    const lobbyUser = currentUser;
+    const registry = createGameCartridgeRegistry(gameCartridges);
+    const locale = i18n.getLocale();
+    const translateCartridgeMessage = (cartridge: GameCartridge, key: string) => (
+      cartridge.messages[locale]?.[key]
+      ?? cartridge.messages['en-US']?.[key]
+      ?? key
+    );
+
     host.innerHTML = renderLobbyView({
       assets: currentAssets,
       assetDraft: currentAssetDraft,
       assetErrorMessage: currentAssetErrorMessage,
-      locale: i18n.getLocale(),
+      gameCartridges: registry.list().map((cartridge) => ({
+        capabilities: {
+          graphics: cartridge.capabilities.graphics,
+          input: cartridge.capabilities.input,
+          networking: cartridge.capabilities.networking ?? 'none'
+        },
+        description: translateCartridgeMessage(cartridge, cartridge.descriptionKey),
+        id: cartridge.id,
+        isSelected: cartridge.id === selectedGameCartridgeId,
+        tags: cartridge.tagKeys.map((tagKey) => translateCartridgeMessage(cartridge, tagKey)),
+        themeColor: cartridge.themeColor,
+        title: translateCartridgeMessage(cartridge, cartridge.titleKey)
+      })),
+      locale,
+      selectedGameCartridgeId,
       t: i18n.t,
-      user: currentUser,
+      user: lobbyUser,
       walletAssets: currentWalletAssets
     });
 
@@ -181,6 +219,7 @@ export const createGameShell = ({
     const assetIdInput = host.querySelector<HTMLInputElement>('#asset-id');
     const quantityInput = host.querySelector<HTMLInputElement>('#asset-quantity');
     const enterGameButton = host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]');
+    const gameCartridgeButtons = host.querySelectorAll<HTMLButtonElement>('[data-role="game-cartridge-option"]');
     const logoutButton = host.querySelector<HTMLButtonElement>('[data-role="logout-button"]');
 
     bindLocaleSwitcher();
@@ -189,9 +228,57 @@ export const createGameShell = ({
       showLogin();
     });
 
+    gameCartridgeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        selectedGameCartridgeId = button.dataset.cartridgeId;
+        renderLobby();
+      });
+    });
+
     enterGameButton?.addEventListener('click', () => {
+      const cartridge = selectedGameCartridgeId
+        ? registry.findById(selectedGameCartridgeId)
+        : undefined;
+
+      if (!cartridge) {
+        return;
+      }
+
+      const player = {
+        authMethod: lobbyUser.authMethod,
+        userId: lobbyUser.userId,
+        username: lobbyUser.username,
+        ...(lobbyUser.walletAddress ? { walletAddress: lobbyUser.walletAddress } : {}),
+        ...(lobbyUser.walletChainId !== undefined ? { walletChainId: lobbyUser.walletChainId } : {})
+      } satisfies GameCartridgeContext['player'];
+      const cartridgeContext = {
+        assets: currentAssets,
+        i18n: {
+          locale,
+          t: (key: string, params?: Record<string, string | number>) => {
+            const template = translateCartridgeMessage(cartridge, key);
+
+            if (!params) {
+              return template;
+            }
+
+            return template.replace(/\{(\w+)\}/g, (_match, token: string) => {
+              const value = params[token];
+              return value === undefined ? `{${token}}` : String(value);
+            });
+          }
+        },
+        player,
+        services: {
+          networking: {
+            isAvailable: false
+          }
+        },
+        ...(currentWalletAssets ? { walletAssets: currentWalletAssets } : {})
+      } satisfies GameCartridgeContext;
+
       host.innerHTML = '';
-      gameApp = gameAppFactory(host);
+      gameApp = gameAppFactory(host, cartridge, cartridgeContext);
       gameApp.start();
     });
 

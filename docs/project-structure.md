@@ -5,6 +5,7 @@
 `game-forge` is a TypeScript monorepo managed with `pnpm` workspaces. It contains browser applications, shared packages, repository-level tests, repository scripts, and persistent engineering rules.
 
 The project is intentionally split into narrow packages so that runtime behavior, rendering, wallet integration, platform access, and application code stay loosely coupled.
+Game code is packaged as game cartridges so the browser client can select a game while each game keeps its own source, tests, assets, and localized messages.
 
 ## Top-Level Layout
 
@@ -36,13 +37,14 @@ Browser game client example.
 - Uses `@game-forge/i18n` for localized copy, locale persistence, and runtime switching
 - Uses wallet-aware login and lobby flow before entering the current render path
 - Shows local game assets and wallet-backed on-chain assets in separate sections
+- Lists built-in game cartridges from `src/game-cartridges.ts` and injects player, assets, i18n, and platform services when launching one
 
 Key files:
 
 - `src/main.ts`: browser entry
 - `src/create-game-shell.ts`: login, lobby, wallet flow, and game transition
 - `src/create-game-client-app.ts`: in-game app assembly
-- `src/game-module.ts`: minimal scene behavior
+- `src/game-cartridges.ts`: built-in game cartridge registry
 - `src/wallet-client.ts`: browser wallet integration
 
 ### `apps/admin-panel`
@@ -95,6 +97,33 @@ Owns rendering backend implementations.
 - `createThreeRenderBackend()`
 
 Right now it provides a Three.js backend. The abstraction is intentionally narrow so future renderer swaps do not force a full engine wrapper.
+
+### `packages/game-cartridge`
+
+Owns the game cartridge SDK shared by the platform and individual games.
+
+- `GameCartridge`
+- `GameCartridgeContext`
+- `GameCartridgeRegistry`
+- game capability declarations for graphics, input, and future networking
+
+The package is singular because it defines the protocol for one cartridge. Concrete games live under `packages/games/*`.
+
+### `packages/games/bee-shooter`
+
+Small built-in shooter cartridge for testing the cartridge lifecycle.
+
+- Uses the Three.js graphics path through `@game-forge/graphics`
+- Provides localized cartridge metadata through `@game-forge/i18n`
+- Exercises player movement, projectiles, enemy motion, collision, and scoring behavior
+
+### `packages/games/falling-blocks`
+
+Small built-in falling-blocks cartridge for testing grid-like gameplay.
+
+- Uses the Three.js graphics path through `@game-forge/graphics`
+- Provides localized cartridge metadata through `@game-forge/i18n`
+- Exercises board state, piece movement, rotation, line clears, and game-over state
 
 ### `packages/wallet/core`
 
@@ -158,6 +187,30 @@ Owns asset registration and lookup helpers.
 Owns environment-facing platform helpers.
 
 - browser host lookup and creation
+
+## Game Cartridge Flow
+
+- `apps/game-client/src/game-cartridges.ts` imports built-in cartridges and registers them with `createGameCartridgeRegistry()`.
+- The lobby renders translated cartridge metadata from each cartridge's message catalog.
+- When the player starts a cartridge, the shell creates `GameCartridgeContext` with player identity, local assets, wallet assets, i18n, and platform services.
+- v1 only supports Three.js cartridges through `RuntimeModule<ThreeRenderScene>`.
+- v1 exposes `services.networking.isAvailable === false` as the reserved location for later networking support.
+
+## Multiplayer Extension Points
+
+Multiplayer is intentionally not implemented in v1. Future networking work should add shared packages instead of putting transport code inside each game.
+
+- `packages/networking`: shared network session, message protocol, connection state, and reconnect behavior
+- `packages/p2p` or `packages/networking/webrtc`: WebRTC signaling, peer connection, and data channel adapters
+- `apps/backend/src/routes` and `apps/backend/src/services`: rooms, matchmaking, invitations, and signaling relay
+- `GameCartridgeContext.services.networking`: platform-injected API that cartridges use instead of directly depending on WebRTC or backend details
+
+## Game Localization
+
+- Cartridge metadata and game text belong in each cartridge package's message catalog.
+- Cartridges use `@game-forge/i18n` to validate `en-US` and `zh-CN` keys.
+- The platform owns locale selection and injects `context.i18n` into the selected cartridge.
+- The game client and cartridges share the active locale so switching language updates the lobby and cartridge metadata together.
 
 ## Tests
 
@@ -224,6 +277,8 @@ Human-readable repository documentation, including this file.
 - File and directory names use kebab-case
 - TypeScript types, interfaces, and classes use PascalCase
 - Runtime and rendering are separated on purpose
+- Game cartridge protocol and concrete game implementations are separated on purpose
 - Wallet contracts and wallet implementations are separated on purpose
 - Rendering abstraction is narrow to avoid unnecessary performance overhead
+- Multiplayer transport should be injected as a platform service rather than implemented separately by each cartridge
 - Repository rules are kept under `rules/`, not hidden only in chat history

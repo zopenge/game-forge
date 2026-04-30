@@ -12,17 +12,35 @@ export interface LobbyViewOptions {
     readonly quantity?: string | undefined;
   } | undefined;
   readonly assetErrorMessage?: string | undefined;
+  readonly gameCartridges: readonly LobbyGameCartridgeView[];
   readonly locale: LocaleCode;
+  readonly selectedGameCartridgeId?: string | undefined;
   readonly t: (key: GameClientMessageKey, params?: Record<string, string | number>) => string;
   readonly user: CurrentUser;
   readonly walletAssets?: WalletAssetSnapshot | undefined;
+}
+
+export interface LobbyGameCartridgeView {
+  readonly capabilities: {
+    readonly graphics: string;
+    readonly input: string;
+    readonly networking?: string;
+  };
+  readonly description: string;
+  readonly id: string;
+  readonly isSelected: boolean;
+  readonly tags: readonly string[];
+  readonly themeColor: string;
+  readonly title: string;
 }
 
 export const renderLobbyView = ({
   assets,
   assetDraft,
   assetErrorMessage,
+  gameCartridges,
   locale,
+  selectedGameCartridgeId,
   t,
   user,
   walletAssets
@@ -46,6 +64,30 @@ export const renderLobbyView = ({
   const authMethodKey = user.authMethod === 'wallet'
     ? 'common.authMethod.wallet'
     : 'common.authMethod.username';
+  const gameCartridgeMarkup = gameCartridges.length > 0
+    ? gameCartridges.map((cartridge) => `
+        <button
+          type="button"
+          data-role="game-cartridge-option"
+          data-cartridge-id="${cartridge.id}"
+          class="game-cartridge-card ${cartridge.isSelected ? 'selected' : ''}"
+          style="--cartridge-color: ${cartridge.themeColor}"
+          aria-pressed="${cartridge.isSelected ? 'true' : 'false'}"
+        >
+          <span class="game-cartridge-media"></span>
+          <span class="game-cartridge-copy">
+            <strong>${cartridge.title}</strong>
+            <span>${cartridge.description}</span>
+          </span>
+          <span class="game-cartridge-tags">${cartridge.tags.map((tag) => `<span>${tag}</span>`).join('')}</span>
+          <span class="game-cartridge-capabilities">
+            ${t('lobby.gameCartridges.capability.graphics', { graphics: cartridge.capabilities.graphics })}
+            · ${t('lobby.gameCartridges.capability.input', { input: cartridge.capabilities.input })}
+            · ${t('lobby.gameCartridges.capability.networking', { networking: cartridge.capabilities.networking ?? 'none' })}
+          </span>
+        </button>
+      `.trim()).join('')
+    : `<p class="lobby-empty">${t('lobby.gameCartridges.empty')}</p>`;
 
   return `
     <section class="lobby-shell">
@@ -88,9 +130,13 @@ export const renderLobbyView = ({
               : t('lobby.wallet.disconnectedMeta')}</p>
             <ul data-role="wallet-asset-list" class="asset-list">${walletAssetMarkup}</ul>
           </section>
+          <section class="lobby-section game-cartridge-section">
+            <h2>${t('lobby.gameCartridges.title')}</h2>
+            <div data-role="game-cartridge-list" class="game-cartridge-list">${gameCartridgeMarkup}</div>
+          </section>
         </div>
         <div class="lobby-actions">
-          <button type="button" data-role="enter-game-button">${t('lobby.action.enterGame')}</button>
+          <button type="button" data-role="enter-game-button" ${selectedGameCartridgeId ? '' : 'disabled'}>${t('lobby.action.enterGame')}</button>
         </div>
       </div>
     </section>

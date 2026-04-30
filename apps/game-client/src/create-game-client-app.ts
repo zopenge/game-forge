@@ -2,6 +2,7 @@ import { createThreeRenderBackend } from '@game-forge/graphics';
 import type {
   ThreeRenderScene
 } from '@game-forge/graphics';
+import type { GameCartridge, GameCartridgeContext } from '@game-forge/game-cartridge';
 import {
   createBrowserClock,
   createRenderApp,
@@ -10,16 +11,18 @@ import {
   type RenderClock
 } from '@game-forge/runtime';
 
-import { createGameModule } from './game-module';
-
 export interface GameClientAppOptions {
   readonly backend?: RenderBackend<ThreeRenderScene, HTMLElement>;
+  readonly cartridge: GameCartridge;
+  readonly cartridgeContext: GameCartridgeContext;
   readonly clock?: RenderClock;
   readonly host: HTMLElement;
 }
 
 export const createGameClientApp = ({
   backend = createThreeRenderBackend(),
+  cartridge,
+  cartridgeContext,
   clock = createBrowserClock(),
   host
 }: GameClientAppOptions): RenderApp => createRenderApp({
@@ -30,5 +33,5 @@ export const createGameClientApp = ({
     width: currentHost.clientWidth || window.innerWidth || 1
   }),
   host,
-  module: createGameModule()
+  module: cartridge.createModule(cartridgeContext)
 });

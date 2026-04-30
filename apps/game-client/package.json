@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@game-forge/bee-shooter": "workspace:*",
+    "@game-forge/falling-blocks": "workspace:*",
+    "@game-forge/game-cartridge": "workspace:*",
     "@game-forge/graphics": "workspace:*",
     "@game-forge/i18n": "workspace:*",
     "@game-forge/platform": "workspace:*",

@@ -80,6 +80,7 @@ The repository currently treats ESLint warnings as failures through the root lin
 
 - shared package imports use workspace aliases such as `@game-forge/runtime`
 - localization primitives use the shared `@game-forge/i18n` workspace package
+- game cartridges use `@game-forge/game-cartridge`; concrete built-in games live under `packages/games/*`
 - wallet packages use aliases such as `@game-forge/wallet-core` and `@game-forge/wallet-evm`
 - test tooling and TypeScript path aliases are configured at the repository root
 
@@ -88,6 +89,14 @@ The repository currently treats ESLint warnings as failures through the root lin
 - user-facing page copy belongs in locale message catalogs, not inline inside page templates or flow control
 - browser apps currently share the `game-forge.locale` storage key for persisted locale choice
 - new localized views should prefer semantic translation keys over English source strings
+- each game cartridge should provide its own `en-US` and `zh-CN` message catalog and receive the active locale through `GameCartridgeContext`
+
+### Game Cartridges
+
+- the SDK package is `packages/game-cartridge` with package name `@game-forge/game-cartridge`
+- concrete built-in game packages live under `packages/games/*`
+- cartridges should declare capabilities for graphics, input, and future networking
+- v1 networking is only a reserved service location; cartridges should not implement WebRTC or matchmaking directly
 
 ### Renderer Boundary
 

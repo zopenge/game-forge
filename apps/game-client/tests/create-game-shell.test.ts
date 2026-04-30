@@ -2,6 +2,8 @@
 
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
+import type { GameCartridgeContext } from '@game-forge/game-cartridge';
+
 import { createGameShell } from '../src/create-game-shell';
 import type { ApiClient, AssetEntry, CurrentUser, LoginResponse } from '../src/api-client';
 import type { WalletClient } from '../src/wallet-client';
@@ -93,6 +95,7 @@ describe('create-game-shell', () => {
   beforeEach(() => {
     document.head.innerHTML = '';
     document.body.innerHTML = '';
+    localStorage.clear();
   });
 
   test('shows the login view when there is no stored token', async () => {
@@ -262,6 +265,136 @@ describe('create-game-shell', () => {
 
     expect(start).toHaveBeenCalledOnce();
     expect(resize).toHaveBeenCalledOnce();
+  });
+
+  test('lobby renders game cartridges and starts the selected cartridge with context', async () => {
+    const host = document.createElement('div');
+    const start = vi.fn();
+    const createModule = vi.fn((context: GameCartridgeContext) => {
+      void context;
+
+      return {
+        setup: () => undefined,
+        update: () => undefined
+      };
+    });
+    const shell = createGameShell({
+      apiClient: createApiClientStub({
+        getAssets: async () => [{
+          assetId: 'gold',
+          quantity: 5
+        }]
+      }),
+      authStorage: createMemoryAuthStorage('token-1'),
+      gameAppFactory: (_host, cartridge, context) => {
+        createModule(context);
+
+        return {
+          isRunning: () => true,
+          resize: vi.fn(),
+          start,
+          stop: vi.fn()
+        };
+      },
+      gameCartridges: [{
+        capabilities: {
+          graphics: 'three',
+          input: 'keyboard',
+          networking: 'none'
+        },
+        createModule,
+        descriptionKey: 'game.description',
+        id: 'test-cartridge',
+        messages: {
+          'en-US': {
+            'game.description': 'A test cartridge',
+            'game.tag': 'Arcade',
+            'game.title': 'Test Cartridge'
+          },
+          'zh-CN': {
+            'game.description': '测试卡带',
+            'game.tag': '街机',
+            'game.title': '测试卡带'
+          }
+        },
+        tagKeys: ['game.tag'],
+        themeColor: '#69d1ff',
+        titleKey: 'game.title'
+      }],
+      host
+    });
+
+    await shell.start();
+
+    expect(host.textContent).toContain('Test Cartridge');
+    expect(host.textContent).toContain('A test cartridge');
+
+    host.querySelector<HTMLButtonElement>('[data-role="game-cartridge-option"]')!.click();
+    host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+
+    expect(start).toHaveBeenCalledOnce();
+    expect(createModule).toHaveBeenCalledWith(expect.objectContaining({
+      assets: [{
+        assetId: 'gold',
+        quantity: 5
+      }],
+      i18n: expect.objectContaining({
+        locale: 'en-US'
+      }),
+      player: expect.objectContaining({
+        authMethod: 'username',
+        username: 'pilot'
+      }),
+      services: {
+        networking: {
+          isAvailable: false
+        }
+      }
+    }));
+  });
+
+  test('lobby cartridge metadata follows locale changes', async () => {
+    const host = document.createElement('div');
+    const shell = createGameShell({
+      apiClient: createApiClientStub(),
+      authStorage: createMemoryAuthStorage('token-1'),
+      gameCartridges: [{
+        capabilities: {
+          graphics: 'three',
+          input: 'keyboard',
+          networking: 'none'
+        },
+        createModule: () => ({
+          setup: () => undefined,
+          update: () => undefined
+        }),
+        descriptionKey: 'game.description',
+        id: 'test-cartridge',
+        messages: {
+          'en-US': {
+            'game.description': 'A test cartridge',
+            'game.tag': 'Arcade',
+            'game.title': 'Test Cartridge'
+          },
+          'zh-CN': {
+            'game.description': '测试卡带',
+            'game.tag': '街机',
+            'game.title': '测试卡带'
+          }
+        },
+        tagKeys: ['game.tag'],
+        themeColor: '#69d1ff',
+        titleKey: 'game.title'
+      }],
+      host
+    });
+
+    await shell.start();
+    host.querySelector<HTMLSelectElement>('[data-role="locale-select"]')!.value = 'zh-CN';
+    host.querySelector<HTMLSelectElement>('[data-role="locale-select"]')!.dispatchEvent(new Event('change'));
+
+    expect(host.textContent).toContain('测试卡带');
+    expect(host.textContent).toContain('街机');
   });
 
   test('wallet session changes return the user to the login view', async () => {

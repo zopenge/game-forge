@@ -90,6 +90,15 @@ importers:
 
   apps/game-client:
     dependencies:
+      '@game-forge/bee-shooter':
+        specifier: workspace:*
+        version: link:../../packages/games/bee-shooter
+      '@game-forge/falling-blocks':
+        specifier: workspace:*
+        version: link:../../packages/games/falling-blocks
+      '@game-forge/game-cartridge':
+        specifier: workspace:*
+        version: link:../../packages/game-cartridge
       '@game-forge/graphics':
         specifier: workspace:*
         version: link:../../packages/graphics
@@ -115,6 +124,57 @@ importers:
   packages/assets: {}
 
   packages/device: {}
+
+  packages/game-cartridge:
+    dependencies:
+      '@game-forge/graphics':
+        specifier: workspace:*
+        version: link:../graphics
+      '@game-forge/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@game-forge/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@game-forge/wallet-core':
+        specifier: workspace:*
+        version: link:../wallet/core
+
+  packages/games/bee-shooter:
+    dependencies:
+      '@game-forge/game-cartridge':
+        specifier: workspace:*
+        version: link:../../game-cartridge
+      '@game-forge/graphics':
+        specifier: workspace:*
+        version: link:../../graphics
+      '@game-forge/i18n':
+        specifier: workspace:*
+        version: link:../../i18n
+      '@game-forge/runtime':
+        specifier: workspace:*
+        version: link:../../runtime
+      three:
+        specifier: ^0.171.0
+        version: 0.171.0
+
+  packages/games/falling-blocks:
+    dependencies:
+      '@game-forge/game-cartridge':
+        specifier: workspace:*
+        version: link:../../game-cartridge
+      '@game-forge/graphics':
+        specifier: workspace:*
+        version: link:../../graphics
+      '@game-forge/i18n':
+        specifier: workspace:*
+        version: link:../../i18n
+      '@game-forge/runtime':
+        specifier: workspace:*
+        version: link:../../runtime
+      three:
+        specifier: ^0.171.0
+        version: 0.171.0
 
   packages/graphics:
     dependencies:
