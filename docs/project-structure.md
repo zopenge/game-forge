@@ -33,6 +33,7 @@ Browser game client example.
 
 - Uses `@game-forge/runtime` for lifecycle and frame flow
 - Uses `@game-forge/graphics` for the current Three.js backend
+- Uses `@game-forge/i18n` for localized copy, locale persistence, and runtime switching
 - Uses wallet-aware login and lobby flow before entering the current render path
 - Shows local game assets and wallet-backed on-chain assets in separate sections
 
@@ -49,6 +50,7 @@ Key files:
 Browser admin UI example.
 
 - Uses shared packages instead of directly reaching into browser logic everywhere
+- Uses the shared i18n package for localized labels and locale switching
 - Demonstrates that non-game applications can still live in the same workspace
 
 Key files:
@@ -119,6 +121,15 @@ Owns minimal input state tracking.
 
 - pressed keys
 - pointer position
+
+### `packages/i18n`
+
+Owns shared localization primitives.
+
+- locale detection and fallback
+- locale persistence
+- translation catalogs and key-shape validation
+- runtime translation helpers for browser apps
 
 ### `packages/device`
 

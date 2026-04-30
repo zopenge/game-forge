@@ -103,14 +103,23 @@ h2 {
   color: #94b7de;
 }
 
+.locale-control {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  margin-bottom: 20px;
+}
+
 input,
-button {
+button,
+select {
   border-radius: 14px;
   border: 1px solid rgba(148, 183, 222, 0.22);
   font: inherit;
 }
 
-input {
+input,
+select {
   padding: 14px 16px;
   color: #eff6ff;
   background: rgba(8, 20, 39, 0.82);

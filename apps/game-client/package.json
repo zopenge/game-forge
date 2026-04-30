@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@game-forge/graphics": "workspace:*",
+    "@game-forge/i18n": "workspace:*",
     "@game-forge/platform": "workspace:*",
     "@game-forge/runtime": "workspace:*",
     "@game-forge/wallet-core": "workspace:*",

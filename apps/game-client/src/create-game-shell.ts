@@ -1,3 +1,4 @@
+import type { I18nStore, LocaleCode } from '@game-forge/i18n';
 import type { RenderApp } from '@game-forge/runtime';
 import type { BrowserWalletRegistry, WalletAssetSnapshot } from '@game-forge/wallet-core';
 import { createBrowserWalletRegistry } from '@game-forge/wallet-core';
@@ -9,6 +10,9 @@ import { createApiClient } from './api-client';
 import type { AuthStorage } from './auth-storage';
 import { createAuthStorage } from './auth-storage';
 import { createGameClientApp } from './create-game-client-app';
+import { createGameClientI18n } from './i18n/create-game-client-i18n';
+import type { gameClientMessages } from './i18n/game-client-messages';
+import { mapGameClientError } from './i18n/map-game-client-error';
 import type { WalletClient } from './wallet-client';
 import { createWalletClient } from './wallet-client';
 import { renderLobbyView } from './views/lobby-view';
@@ -24,6 +28,7 @@ export interface GameShellOptions {
   readonly authStorage?: AuthStorage;
   readonly gameAppFactory?: (host: HTMLElement) => RenderApp;
   readonly host: HTMLElement;
+  readonly i18n?: I18nStore<typeof gameClientMessages>;
   readonly walletClient?: WalletClient;
   readonly walletRegistry?: BrowserWalletRegistry;
 }
@@ -33,6 +38,7 @@ export const createGameShell = ({
   authStorage = createAuthStorage(),
   gameAppFactory = (host) => createGameClientApp({ host }),
   host,
+  i18n = createGameClientI18n(),
   walletRegistry = createBrowserWalletRegistry([createEvmBrowserWalletAdapter()]),
   walletClient = createWalletClient({
     apiClient,
@@ -42,12 +48,26 @@ export const createGameShell = ({
   })
 }: GameShellOptions): GameShell => {
   let currentAssets: AssetEntry[] = [];
+  let currentAssetDraft = {
+    assetId: '',
+    quantity: ''
+  };
+  let currentAssetErrorMessage: string | undefined;
+  let currentLoginErrorMessage: string | undefined;
   let currentUser: CurrentUser | undefined;
-  let gameApp: RenderApp | undefined;
+  let currentUsername = '';
+  let currentWalletErrorMessage: string | undefined;
   let currentWalletAssets: WalletAssetSnapshot | undefined;
+  let gameApp: RenderApp | undefined;
   let stopWalletAccountListener: () => void = () => undefined;
   let stopWalletChainListener: () => void = () => undefined;
   let token = authStorage.readToken();
+
+  const bindLocaleSwitcher = () => {
+    host.querySelector<HTMLSelectElement>('[data-role="locale-select"]')?.addEventListener('change', (event) => {
+      i18n.setLocale((event.currentTarget as HTMLSelectElement).value as LocaleCode);
+    });
+  };
 
   const resetWalletListeners = () => {
     stopWalletAccountListener();
@@ -60,52 +80,54 @@ export const createGameShell = ({
     authStorage.clearToken();
     token = null;
     currentAssets = [];
+    currentAssetDraft = {
+      assetId: '',
+      quantity: ''
+    };
+    currentAssetErrorMessage = undefined;
+    currentLoginErrorMessage = undefined;
     currentUser = undefined;
+    currentUsername = '';
+    currentWalletErrorMessage = undefined;
     currentWalletAssets = undefined;
     gameApp?.stop();
     gameApp = undefined;
     resetWalletListeners();
   };
 
-  const bindWalletListeners = () => {
-    resetWalletListeners();
-
-    if (currentUser?.authMethod !== 'wallet') {
-      return;
-    }
-
-    const invalidateWalletSession = () => {
-      clearSession();
-      showLogin('Wallet session changed. Please sign in again.');
-    };
-
-    stopWalletAccountListener = walletClient.onAccountsChanged(invalidateWalletSession);
-    stopWalletChainListener = walletClient.onChainChanged(invalidateWalletSession);
-  };
-
   const showLogin = (errorMessage?: string, walletErrorMessage?: string) => {
+    currentLoginErrorMessage = errorMessage;
+    currentWalletErrorMessage = walletErrorMessage;
     host.innerHTML = renderLoginView({
       errorMessage,
       isWalletAvailable: walletClient.isAvailable(),
+      locale: i18n.getLocale(),
+      t: i18n.t,
+      username: currentUsername,
       walletErrorMessage
     });
+
     const form = host.querySelector<HTMLFormElement>('[data-role="login-form"]');
     const input = host.querySelector<HTMLInputElement>('#username');
     const walletLoginButton = host.querySelector<HTMLButtonElement>('[data-role="wallet-login-button"]');
 
+    bindLocaleSwitcher();
     input?.focus();
+    input?.addEventListener('input', () => {
+      currentUsername = input.value;
+    });
+
     form?.addEventListener('submit', async (event) => {
       event.preventDefault();
-
-      const username = input?.value ?? '';
+      currentUsername = input?.value ?? '';
 
       try {
-        const loginResponse = await apiClient.login(username);
+        const loginResponse = await apiClient.login(currentUsername);
         authStorage.writeToken(loginResponse.token);
         token = loginResponse.token;
         await loadLobby();
       } catch (error) {
-        showLogin(error instanceof Error ? error.message : 'Login failed.');
+        showLogin(mapGameClientError(error, 'auth.error.loginFailed', i18n.t));
       }
     });
 
@@ -118,9 +140,25 @@ export const createGameShell = ({
         bindWalletListeners();
         await loadLobby();
       } catch (error) {
-        showLogin(undefined, error instanceof Error ? error.message : 'Wallet login failed.');
+        showLogin(undefined, mapGameClientError(error, 'auth.error.walletLoginFailed', i18n.t));
       }
     });
+  };
+
+  const bindWalletListeners = () => {
+    resetWalletListeners();
+
+    if (currentUser?.authMethod !== 'wallet') {
+      return;
+    }
+
+    const invalidateWalletSession = () => {
+      clearSession();
+      showLogin(i18n.t('auth.error.walletSessionChanged'));
+    };
+
+    stopWalletAccountListener = walletClient.onAccountsChanged(invalidateWalletSession);
+    stopWalletChainListener = walletClient.onChainChanged(invalidateWalletSession);
   };
 
   const renderLobby = () => {
@@ -131,15 +169,21 @@ export const createGameShell = ({
 
     host.innerHTML = renderLobbyView({
       assets: currentAssets,
+      assetDraft: currentAssetDraft,
+      assetErrorMessage: currentAssetErrorMessage,
+      locale: i18n.getLocale(),
+      t: i18n.t,
       user: currentUser,
       walletAssets: currentWalletAssets
     });
 
-    const assetError = host.querySelector<HTMLElement>('[data-role="asset-error"]');
     const assetForm = host.querySelector<HTMLFormElement>('[data-role="asset-form"]');
+    const assetIdInput = host.querySelector<HTMLInputElement>('#asset-id');
+    const quantityInput = host.querySelector<HTMLInputElement>('#asset-quantity');
     const enterGameButton = host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]');
     const logoutButton = host.querySelector<HTMLButtonElement>('[data-role="logout-button"]');
 
+    bindLocaleSwitcher();
     logoutButton?.addEventListener('click', () => {
       clearSession();
       showLogin();
@@ -151,27 +195,46 @@ export const createGameShell = ({
       gameApp.start();
     });
 
+    assetIdInput?.addEventListener('input', () => {
+      currentAssetDraft = {
+        ...currentAssetDraft,
+        assetId: assetIdInput.value
+      };
+    });
+    quantityInput?.addEventListener('input', () => {
+      currentAssetDraft = {
+        ...currentAssetDraft,
+        quantity: quantityInput.value
+      };
+    });
+
     assetForm?.addEventListener('submit', async (event) => {
       event.preventDefault();
 
       const formData = new FormData(assetForm);
       const assetId = String(formData.get('assetId') ?? '');
-      const quantity = Number(formData.get('quantity') ?? '');
+      const quantityText = String(formData.get('quantity') ?? '');
+      const quantity = Number(quantityText);
+      currentAssetDraft = {
+        assetId,
+        quantity: quantityText
+      };
 
       try {
         await apiClient.setAsset(token!, {
           assetId,
           quantity
         });
+        currentAssetDraft = {
+          assetId: '',
+          quantity: ''
+        };
+        currentAssetErrorMessage = undefined;
         currentAssets = await apiClient.getAssets(token!);
         renderLobby();
       } catch (error) {
-        if (!assetError) {
-          return;
-        }
-
-        assetError.classList.remove('hidden');
-        assetError.textContent = error instanceof Error ? error.message : 'Failed to update asset.';
+        currentAssetErrorMessage = mapGameClientError(error, 'lobby.error.assetUpdateFailed', i18n.t);
+        renderLobby();
       }
     });
   };
@@ -185,6 +248,9 @@ export const createGameShell = ({
     try {
       currentUser = await apiClient.getCurrentUser(token);
       currentAssets = await apiClient.getAssets(token);
+      currentAssetErrorMessage = undefined;
+      currentLoginErrorMessage = undefined;
+      currentWalletErrorMessage = undefined;
       currentWalletAssets = currentUser.authMethod === 'wallet'
         ? await apiClient.getWalletAssets(token)
         : undefined;
@@ -195,6 +261,19 @@ export const createGameShell = ({
       showLogin();
     }
   };
+
+  i18n.subscribe(() => {
+    if (gameApp) {
+      return;
+    }
+
+    if (!currentUser || !token) {
+      showLogin(currentLoginErrorMessage, currentWalletErrorMessage);
+      return;
+    }
+
+    renderLobby();
+  });
 
   return {
     resize: () => {

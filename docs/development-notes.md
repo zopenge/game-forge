@@ -79,8 +79,15 @@ The repository currently treats ESLint warnings as failures through the root lin
 ### Workspace Imports
 
 - shared package imports use workspace aliases such as `@game-forge/runtime`
+- localization primitives use the shared `@game-forge/i18n` workspace package
 - wallet packages use aliases such as `@game-forge/wallet-core` and `@game-forge/wallet-evm`
 - test tooling and TypeScript path aliases are configured at the repository root
+
+### Localized UI Copy
+
+- user-facing page copy belongs in locale message catalogs, not inline inside page templates or flow control
+- browser apps currently share the `game-forge.locale` storage key for persisted locale choice
+- new localized views should prefer semantic translation keys over English source strings
 
 ### Renderer Boundary
 

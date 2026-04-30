@@ -56,6 +56,9 @@ importers:
       '@game-forge/device':
         specifier: workspace:*
         version: link:../../packages/device
+      '@game-forge/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@game-forge/identity':
         specifier: workspace:*
         version: link:../../packages/identity
@@ -90,6 +93,9 @@ importers:
       '@game-forge/graphics':
         specifier: workspace:*
         version: link:../../packages/graphics
+      '@game-forge/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@game-forge/platform':
         specifier: workspace:*
         version: link:../../packages/platform
@@ -118,6 +124,8 @@ importers:
       three:
         specifier: ^0.171.0
         version: 0.171.0
+
+  packages/i18n: {}
 
   packages/identity: {}
 

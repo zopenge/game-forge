@@ -9,6 +9,7 @@ export default defineConfig({
       '@game-forge/assets': resolve(__dirname, 'packages/assets/src/index.ts'),
       '@game-forge/device': resolve(__dirname, 'packages/device/src/index.ts'),
       '@game-forge/graphics': resolve(__dirname, 'packages/graphics/src/index.ts'),
+      '@game-forge/i18n': resolve(__dirname, 'packages/i18n/src/index.ts'),
       '@game-forge/identity': resolve(__dirname, 'packages/identity/src/index.ts'),
       '@game-forge/input': resolve(__dirname, 'packages/input/src/index.ts'),
       '@game-forge/platform': resolve(__dirname, 'packages/platform/src/index.ts'),
