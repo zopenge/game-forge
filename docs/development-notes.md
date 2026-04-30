@@ -64,8 +64,56 @@ $env:GAME_FORGE_OPEN_BROWSER='0'; pnpm dev
 - `vercel.json` supports a Vercel project connected at the repository root and deploys the game client from `apps/game-client/dist`.
 - Additional Vercel configs live in `apps/game-client/vercel.json` and `apps/admin-panel/vercel.json`; they support projects whose root directory is set to the matching app.
 - Vercel deployments are static frontends and must point `VITE_GAME_FORGE_API_BASE_URL` to an external backend such as Render for API flows.
-- Shared deployment commands live in the root `package.json` as `build:backend`, `build:game-client`, `build:admin-panel`, `deploy:build:game-client`, `deploy:build:admin-panel`, and `deploy:start:backend`.
+- Shared deployment commands live in the root `package.json` as `build:backend`, `build:game-client`, `build:admin-panel`, `create:render-env`, `deploy:build:game-client`, `deploy:build:admin-panel`, and `deploy:start:backend`.
 - The current backend uses in-memory storage, so hosted demo data is lost when the service restarts.
+
+### Render Backend Web Service
+
+Use these settings when creating or updating the backend in the Render dashboard:
+
+- Service Type: Web Service
+- Repository: `zopenge/game-forge`
+- Branch: `main`
+- Runtime: Node
+- Root Directory: leave blank
+- Build Command: `pnpm install --frozen-lockfile && pnpm build:backend`
+- Start Command: `pnpm deploy:start:backend`
+
+Generate a local Render env import file from the repository root:
+
+```bash
+pnpm create:render-env
+```
+
+The command writes `.render.env.local`, which is ignored by git and contains only backend variables:
+
+```dotenv
+HOST=0.0.0.0
+JWT_SECRET=<random-local-generated-secret>
+EVM_RPC_URL=https://ethereum.publicnode.com
+DEFAULT_EVM_CHAIN_ID=1
+WALLET_AUTH_MESSAGE_PREFIX=Sign this message to access Game Forge.
+```
+
+Optional examples:
+
+```bash
+pnpm create:render-env -- --service-url https://ai-forge.onrender.com
+pnpm create:render-env -- --service-name ai-forge
+pnpm create:render-env -- --output .render.ai-forge.env.local
+```
+
+Render deployment steps:
+
+1. Create or reuse a Render Web Service.
+2. Connect `zopenge/game-forge`.
+3. Fill in the build command and start command above.
+4. Run `pnpm create:render-env`.
+5. Open `Environment` in the Render sidebar.
+6. Import or paste the values from `.render.env.local`.
+7. Click `Manual Deploy`, then `Clear build cache & deploy`.
+8. After deployment, test `POST https://<render-backend-url>/auth/login`.
+9. If the Render URL is not `https://game-forge-backend.onrender.com`, update the Vercel `VITE_GAME_FORGE_API_BASE_URL` environment variable to the actual Render URL and redeploy the frontend.
 
 ## Required Quality Gates
 

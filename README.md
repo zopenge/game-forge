@@ -42,6 +42,14 @@ The repository includes deployment configuration for Render and Vercel:
 
 Use `.env` only for local development. Production values such as `JWT_SECRET` and `VITE_GAME_FORGE_API_BASE_URL` should be configured in the Render or Vercel dashboard, not committed to git. Vercel frontends should point `VITE_GAME_FORGE_API_BASE_URL` at the hosted backend URL.
 
+For a Render backend Web Service, create a local import file before configuring the Render `Environment` page:
+
+```bash
+pnpm create:render-env
+```
+
+This writes `.render.env.local` with backend-only values. The file is ignored by git. If your Render service URL is not `https://game-forge-backend.onrender.com`, set the Vercel frontend variable `VITE_GAME_FORGE_API_BASE_URL` to your actual Render URL and redeploy the frontend.
+
 ## Documentation
 
 - [docs/index.md](E:\source\game-forge\docs\index.md)
