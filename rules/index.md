@@ -13,4 +13,5 @@ This directory stores persistent repository rules for humans and coding agents.
 - TypeScript changes must keep `pnpm typecheck` passing.
 - Tests must stay green after code changes.
 - Docs must be updated in the same change when implementation, commands, structure, workflow, or public interfaces change.
+- Any file that writes Chinese text must be verified as valid UTF-8 with readable Chinese before handoff.
 - New rules should be added to the matching category file, not only mentioned in chat.

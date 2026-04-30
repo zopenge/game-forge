@@ -10,6 +10,8 @@
 
 - For code changes, run `pnpm lint`, `pnpm typecheck`, and relevant tests before claiming completion.
 - If a command fails, report the actual failure instead of assuming the code is acceptable.
+- When writing Chinese text, verify the touched files are valid UTF-8 and the Chinese renders correctly.
+- Do not hand off files containing mojibake, replacement characters, or corrupted Chinese text.
 
 ## Documentation
 
