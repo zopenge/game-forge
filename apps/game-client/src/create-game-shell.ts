@@ -20,6 +20,7 @@ import type { gameClientMessages } from './i18n/game-client-messages';
 import { mapGameClientError } from './i18n/map-game-client-error';
 import type { WalletClient } from './wallet-client';
 import { createWalletClient } from './wallet-client';
+import { gameViewportConfig } from './game-viewport-config';
 import { renderGameSessionView, type GameSessionChromeState } from './views/game-session-view';
 import { renderLobbyView } from './views/lobby-view';
 import { renderLoginView } from './views/login-view';
@@ -339,7 +340,8 @@ export const createGameShell = ({
     host.innerHTML = renderGameSessionView({
       chromeState: gameSessionChromeState,
       errorMessage: currentGameStopErrorMessage,
-      t: i18n.t
+      t: i18n.t,
+      viewportConfig: gameViewportConfig
     });
     bindGameSessionControls();
     scheduleGameSessionChromeHide();

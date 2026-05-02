@@ -154,13 +154,25 @@ button[disabled] {
 
 .game-session {
   position: relative;
-  min-height: 100vh;
+  display: grid;
+  height: 100dvh;
+  width: 100vw;
   overflow: hidden;
   background: #020814;
 }
 
+.game-stage-shell {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
 .game-stage {
-  min-height: 100vh;
+  width: min(100vw, calc(100dvh * (var(--game-base-width) / var(--game-base-height))));
+  height: min(100dvh, calc(100vw * (var(--game-base-height) / var(--game-base-width))));
+  aspect-ratio: calc(var(--game-base-width) / var(--game-base-height));
 }
 
 .game-session-controls {
@@ -369,4 +381,10 @@ button[disabled] {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+.game-stage canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }

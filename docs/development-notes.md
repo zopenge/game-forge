@@ -243,3 +243,10 @@ Add new persistent rules to `rules/` and keep them grouped by category so they r
 5. Run `pnpm test`
 6. Run `pnpm build` when the change affects packaging or browser output
 7. Update docs when commands, behavior, structure, or public interfaces change
+
+### Game Session Viewport
+
+- The game session stage uses a centralized viewport config at `apps/game-client/src/game-viewport-config.ts`.
+- `baseWidth` and `baseHeight` define the target design resolution and aspect ratio.
+- The game shell scales the stage to fit within the browser viewport while preserving the configured aspect ratio.
+- The game session container uses `100dvh` and hidden overflow so gameplay does not create browser scrollbars.

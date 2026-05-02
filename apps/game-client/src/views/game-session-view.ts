@@ -1,4 +1,5 @@
 import type { GameClientMessageKey } from '../i18n/game-client-messages';
+import type { GameViewportConfig } from '../game-viewport-config';
 
 export type GameSessionChromeState = 'visible' | 'hidden' | 'confirming' | 'error';
 
@@ -6,15 +7,23 @@ export interface GameSessionViewOptions {
   readonly chromeState: GameSessionChromeState;
   readonly errorMessage?: string | undefined;
   readonly t: (key: GameClientMessageKey, params?: Record<string, string | number>) => string;
+  readonly viewportConfig: GameViewportConfig;
 }
 
 export const renderGameSessionView = ({
   chromeState,
   errorMessage,
-  t
+  t,
+  viewportConfig
 }: GameSessionViewOptions) => `
   <section data-role="game-session" class="game-session" data-chrome-state="${chromeState}">
-    <div data-role="game-stage" class="game-stage"></div>
+    <div class="game-stage-shell">
+      <div
+        data-role="game-stage"
+        class="game-stage"
+        style="--game-base-width:${viewportConfig.baseWidth}; --game-base-height:${viewportConfig.baseHeight};"
+      ></div>
+    </div>
     <div data-role="game-session-controls" class="game-session-controls ${chromeState}">
       <button type="button" data-role="return-to-lobby-button" class="game-return-button">
         ${t('game.action.backToLobby')}
