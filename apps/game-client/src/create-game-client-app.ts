@@ -3,6 +3,7 @@ import type {
   GraphicsRenderScene
 } from '@game-forge/graphics';
 import type { GameCartridge, GameCartridgeContext } from '@game-forge/game-cartridge';
+import type { InputController } from '@game-forge/input';
 import {
   createBrowserClock,
   createRenderApp,
@@ -17,6 +18,7 @@ export interface GameClientAppOptions {
   readonly cartridgeContext: GameCartridgeContext;
   readonly clock?: RenderClock;
   readonly host: HTMLElement;
+  readonly input?: InputController;
 }
 
 export const createGameClientApp = ({
@@ -24,7 +26,8 @@ export const createGameClientApp = ({
   cartridge,
   cartridgeContext,
   clock = createBrowserClock(),
-  host
+  host,
+  input
 }: GameClientAppOptions): RenderApp => createRenderApp({
   backend,
   clock,
@@ -33,5 +36,6 @@ export const createGameClientApp = ({
     width: currentHost.clientWidth || window.innerWidth || 1
   }),
   host,
+  ...(input ? { input } : {}),
   module: cartridge.createModule(cartridgeContext)
 });

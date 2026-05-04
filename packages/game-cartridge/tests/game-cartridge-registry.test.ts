@@ -6,7 +6,7 @@ import { createGameCartridgeRegistry } from '../src/index';
 const createCartridge = (id: string): GameCartridge => ({
   capabilities: {
     graphics: 'scene-graph-3d',
-    input: 'keyboard',
+    input: 'mapped-actions',
     networking: 'none'
   },
   createModule: () => ({

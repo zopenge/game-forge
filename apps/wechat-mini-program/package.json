@@ -8,8 +8,5 @@
   "dependencies": {
     "@game-forge/game-cartridge": "workspace:*",
     "@game-forge/resources": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "^5.6.3"
   }
 }

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import type { GameCartridgeContext } from '@game-forge/game-cartridge';
+import { createInputController, createVirtualInputSource } from '@game-forge/input';
 import { createResourceManager } from '@game-forge/resources';
 
 import { createTestGraphicsScene } from '../../../../tests/helpers/create-test-graphics-scene';
@@ -9,16 +10,38 @@ import {
   fallingBlocksBoardHeight,
   fallingBlocksBoardWidth,
   fallingBlocksGameCartridge,
+  hardDropFallingBlocksPiece,
   moveFallingBlocksDown,
+  moveFallingBlocksLeft,
+  moveFallingBlocksRight,
   rotateFallingBlocksPiece
 } from '../src/index';
 
-const createContext = (): GameCartridgeContext => ({
+const createInput = () => {
+  const virtualInput = createVirtualInputSource();
+
+  return {
+    input: createInputController({
+      mappings: {
+        hardDrop: [{ control: 'hard-drop', device: 'virtual' }],
+        moveDown: [{ control: 'move-down', device: 'virtual' }],
+        moveLeft: [{ control: 'move-left', device: 'virtual' }],
+        moveRight: [{ control: 'move-right', device: 'virtual' }],
+        rotate: [{ control: 'rotate', device: 'virtual' }]
+      },
+      sources: [virtualInput]
+    }),
+    virtualInput
+  };
+};
+
+const createContext = (input = createInput().input): GameCartridgeContext => ({
   assets: [],
   i18n: {
     locale: 'en-US',
     t: (key) => key
   },
+  input,
   player: {
     authMethod: 'username',
     userId: 'user-0001',
@@ -39,7 +62,7 @@ describe('falling-blocks-game-cartridge', () => {
     expect(fallingBlocksGameCartridge.id).toBe('falling-blocks');
     expect(fallingBlocksGameCartridge.capabilities).toEqual({
       graphics: 'scene-graph-3d',
-      input: 'keyboard',
+      input: 'mapped-actions',
       networking: 'none'
     });
     expect(fallingBlocksGameCartridge.viewport).toEqual({
@@ -62,6 +85,61 @@ describe('falling-blocks-game-cartridge', () => {
     expect(state.activePiece.position.y).toBe(initialY + 1);
     expect(state.activePiece.cells).not.toEqual(initialShape);
     expect(state.isGameOver).toBe(false);
+  });
+
+  test('moves horizontally, rotates, soft drops, and hard drops from mapped input', () => {
+    const state = createFallingBlocksState();
+    const initialX = state.activePiece.position.x;
+    const initialShape = state.activePiece.cells.map((cell) => ({ ...cell }));
+
+    moveFallingBlocksRight(state);
+    expect(state.activePiece.position.x).toBe(initialX + 1);
+
+    moveFallingBlocksLeft(state);
+    expect(state.activePiece.position.x).toBe(initialX);
+
+    rotateFallingBlocksPiece(state);
+    expect(state.activePiece.cells).not.toEqual(initialShape);
+
+    moveFallingBlocksDown(state);
+    expect(state.activePiece.position.y).toBe(1);
+
+    hardDropFallingBlocksPiece(state);
+    expect(state.activePiece.position.y).toBe(0);
+    expect(state.board.some((row) => row.some((value) => value === 1))).toBe(true);
+  });
+
+  test('module uses mapped input without auto-rotating pieces', () => {
+    const { input, virtualInput } = createInput();
+    const module = fallingBlocksGameCartridge.createModule(createContext(input));
+    const renderScene = createTestGraphicsScene();
+    const teardown = module.setup({ scene: renderScene });
+    const root = renderScene.scene.children[0]!;
+    const activeBlock = root.children[2]!;
+    const initialX = activeBlock.position.x;
+
+    module.update({
+      frame: {
+        deltaMs: 120,
+        elapsedMs: 120
+      },
+      scene: renderScene
+    });
+
+    expect(root.children[2]?.position.x).toBe(initialX);
+
+    virtualInput.setControl('move-right', 1);
+    module.update({
+      frame: {
+        deltaMs: 120,
+        elapsedMs: 240
+      },
+      scene: renderScene
+    });
+
+    expect(root.children[2]?.position.x).toBeGreaterThan(initialX);
+
+    teardown?.();
   });
 
   test('creates a module that sets up, updates, and tears down a scene', () => {

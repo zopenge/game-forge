@@ -15,6 +15,7 @@
     "@game-forge/game-cartridge": "workspace:*",
     "@game-forge/graphics": "workspace:*",
     "@game-forge/i18n": "workspace:*",
+    "@game-forge/input": "workspace:*",
     "@game-forge/platform": "workspace:*",
     "@game-forge/runtime": "workspace:*",
     "@game-forge/shared-resources": "workspace:*",

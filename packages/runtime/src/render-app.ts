@@ -54,6 +54,10 @@ export interface RuntimeModule<scene> {
   update(context: { readonly frame: RenderFrame; readonly scene: scene }): void;
 }
 
+export interface RuntimeInputController {
+  update(): void;
+}
+
 export interface RenderApp {
   isRunning(): boolean;
   requestStop(request: RuntimeStopRequest): Promise<RuntimeStopResult>;
@@ -67,6 +71,7 @@ export interface CreateRenderAppOptions<scene, host> {
   readonly clock?: RenderClock;
   readonly getSize: (host: host) => RenderSize;
   readonly host: host;
+  readonly input?: RuntimeInputController;
   readonly module: RuntimeModule<scene>;
 }
 
@@ -94,6 +99,7 @@ export const createRenderApp = <scene, host>({
   clock,
   getSize,
   host,
+  input,
   module
 }: CreateRenderAppOptions<scene, host>): RenderApp => {
   let animationFrameId: number | undefined;
@@ -116,6 +122,7 @@ export const createRenderApp = <scene, host>({
     } satisfies RenderFrame;
 
     lastTimestamp = timestamp;
+    input?.update();
     module.update({
       frame,
       scene: currentScene

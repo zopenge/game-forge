@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
+import { createInputController } from '@game-forge/input';
 import type { ResourceManager, ResourceRecord } from '@game-forge/resources';
 import type { GameCartridgeContext } from '@game-forge/game-cartridge';
 import type { RenderApp } from '@game-forge/runtime';
@@ -339,7 +340,7 @@ describe('create-game-shell', () => {
       gameCartridges: [{
         capabilities: {
           graphics: 'scene-graph-3d',
-          input: 'keyboard',
+          input: 'mapped-actions',
           networking: 'none'
         },
         createModule: () => ({
@@ -594,6 +595,16 @@ describe('create-game-shell', () => {
   test('lobby renders game cartridges and starts the selected cartridge with context', async () => {
     const host = document.createElement('div');
     const start = vi.fn();
+    const dispose = vi.fn();
+    const input = createInputController({
+      mappings: {},
+      sources: [{
+        device: 'virtual',
+        dispose,
+        getBindingValue: () => 0,
+        update: () => undefined
+      }]
+    });
     const createModule = vi.fn((context: GameCartridgeContext) => {
       void context;
 
@@ -620,7 +631,7 @@ describe('create-game-shell', () => {
       gameCartridges: [{
         capabilities: {
           graphics: 'scene-graph-3d',
-          input: 'keyboard',
+          input: 'mapped-actions',
           networking: 'none'
         },
         createModule,
@@ -644,6 +655,7 @@ describe('create-game-shell', () => {
         titleKey: 'game.title'
       }],
       host,
+      inputControllerFactory: () => input,
       resourceManagerFactory: () => createResourceManagerStub()
     });
 
@@ -665,6 +677,7 @@ describe('create-game-shell', () => {
       i18n: expect.objectContaining({
         locale: 'en-US'
       }),
+      input,
       player: expect.objectContaining({
         authMethod: 'username',
         username: 'pilot'
@@ -676,6 +689,12 @@ describe('create-game-shell', () => {
         }
       }
     }));
+
+    host.querySelector<HTMLButtonElement>('[data-role="return-to-lobby-button"]')!.click();
+    host.querySelector<HTMLButtonElement>('[data-role="confirm-exit-button"]')!.click();
+    await flushPromises();
+
+    expect(dispose).toHaveBeenCalledOnce();
   });
 
   test('preloads shared and selected cartridge resources before starting the game', async () => {
@@ -701,7 +720,7 @@ describe('create-game-shell', () => {
       gameCartridges: [{
         capabilities: {
           graphics: 'scene-graph-3d',
-          input: 'keyboard',
+          input: 'mapped-actions',
           networking: 'none'
         },
         createModule: () => ({
@@ -753,7 +772,7 @@ describe('create-game-shell', () => {
       gameCartridges: [{
         capabilities: {
           graphics: 'scene-graph-3d',
-          input: 'keyboard',
+          input: 'mapped-actions',
           networking: 'none'
         },
         createModule: () => ({
@@ -805,7 +824,7 @@ describe('create-game-shell', () => {
       gameCartridges: [{
         capabilities: {
           graphics: 'scene-graph-3d',
-          input: 'keyboard',
+          input: 'mapped-actions',
           networking: 'none'
         },
         createModule: () => ({

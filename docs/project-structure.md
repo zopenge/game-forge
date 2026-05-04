@@ -38,6 +38,7 @@ Browser game client example.
 
 - Uses `@game-forge/runtime` for lifecycle and frame flow
 - Uses `@game-forge/graphics` for backend-neutral scene graph rendering
+- Uses `@game-forge/input` to map browser keyboard, pointer, Gamepad, and virtual-device sources into cartridge actions
 - Uses `@game-forge/i18n` with external `translations/*.json` files for localized copy, locale persistence, and runtime switching
 - Uses wallet-aware login and lobby flow before entering the current render path
 - Shows local game assets and wallet-backed on-chain assets in separate sections
@@ -167,10 +168,12 @@ Owns the current EVM wallet implementation.
 
 ### `packages/input`
 
-Owns minimal input state tracking.
+Owns device input state and action mapping.
 
-- pressed keys
-- pointer position
+- legacy pressed-key and pointer-position state helpers
+- keyboard, pointer, Gamepad/joystick, and virtual-device input sources
+- action mappings such as `moveLeft`, `moveRight`, `moveDown`, `rotate`, `fire`, and `hardDrop`
+- `InputController` lifecycle, per-frame updates, action values, and one-shot press consumption
 
 ### `packages/i18n`
 
@@ -235,6 +238,7 @@ WeChat Mini Program APIs stay in `apps/wechat-mini-program/src/platform` while o
 - Before launch, the shell merges `@game-forge/shared-resources` records with the selected cartridge's private resources and preloads required resources.
 - If resource preload fails, the player stays in the lobby and sees a localized load error.
 - During game play, the shell owns transient platform navigation such as return-to-lobby, reveals it from a responsive left-edge handle, confirms player-initiated exits, and passes stop requests to the game through `RuntimeModule.onStopRequested()`.
+- During game launch, the shell creates an `InputController`, injects it into `GameCartridgeContext.input`, asks `@game-forge/runtime` to update it before each module frame, and disposes it when the session ends.
 - v1 supports `scene-graph-3d` cartridges through `RuntimeModule<GraphicsRenderScene>`.
 - v1 exposes `services.networking.isAvailable === false` as the reserved location for later networking support.
 

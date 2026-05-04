@@ -59,7 +59,6 @@ export const createBeeShooterModule = (
   let player: GraphicsNode | undefined;
   let root: GraphicsNode | undefined;
   let sceneGraph: GraphicsSceneNode | undefined;
-  let spawnElapsedMs = 0;
   let score = 0;
 
   const createProjectile = () => {
@@ -148,7 +147,6 @@ export const createBeeShooterModule = (
         createEnemy(index);
       }
 
-      createProjectile();
       scene.scene.add(root);
 
       return () => {
@@ -171,11 +169,10 @@ export const createBeeShooterModule = (
         return;
       }
 
-      player.position.x = Math.sin(frame.elapsedMs * 0.0014) * 1.35;
-      spawnElapsedMs += frame.deltaMs;
+      const movement = context.input.getActionValue('moveRight') - context.input.getActionValue('moveLeft');
+      player.position.x = Math.max(-1.55, Math.min(1.55, player.position.x + movement * frame.deltaMs * 0.004));
 
-      if (spawnElapsedMs >= 480) {
-        spawnElapsedMs = 0;
+      if (context.input.consumeActionPress('fire')) {
         createProjectile();
       }
 
@@ -214,7 +211,7 @@ export const createBeeShooterModule = (
 export const beeShooterGameCartridge: GameCartridge<BeeShooterMessageKey> = {
   capabilities: {
     graphics: 'scene-graph-3d',
-    input: 'keyboard',
+    input: 'mapped-actions',
     networking: 'none'
   },
   createModule: createBeeShooterModule,

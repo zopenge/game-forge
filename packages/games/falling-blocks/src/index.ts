@@ -154,6 +154,48 @@ export const moveFallingBlocksDown = (state: FallingBlocksState) => {
   state.activePiece.position = nextPiece.position;
 };
 
+const moveFallingBlocksHorizontal = (state: FallingBlocksState, offsetX: number) => {
+  if (state.isGameOver) {
+    return;
+  }
+
+  const nextPiece = {
+    cells: state.activePiece.cells,
+    position: {
+      x: state.activePiece.position.x + offsetX,
+      y: state.activePiece.position.y
+    }
+  };
+
+  if (!collides(state, nextPiece)) {
+    state.activePiece.position = nextPiece.position;
+  }
+};
+
+export const moveFallingBlocksLeft = (state: FallingBlocksState) => {
+  moveFallingBlocksHorizontal(state, -1);
+};
+
+export const moveFallingBlocksRight = (state: FallingBlocksState) => {
+  moveFallingBlocksHorizontal(state, 1);
+};
+
+export const hardDropFallingBlocksPiece = (state: FallingBlocksState) => {
+  if (state.isGameOver) {
+    return;
+  }
+
+  while (!state.isGameOver) {
+    const y = state.activePiece.position.y;
+
+    moveFallingBlocksDown(state);
+
+    if (state.activePiece.position.y <= y) {
+      return;
+    }
+  }
+};
+
 export const rotateFallingBlocksPiece = (state: FallingBlocksState) => {
   if (state.isGameOver) {
     return;
@@ -253,12 +295,42 @@ export const createFallingBlocksModule = (
       };
     },
     update: ({ frame, scene }) => {
+      let shouldSync = false;
+
+      if (context.input.consumeActionPress('moveLeft')) {
+        moveFallingBlocksLeft(state);
+        shouldSync = true;
+      }
+
+      if (context.input.consumeActionPress('moveRight')) {
+        moveFallingBlocksRight(state);
+        shouldSync = true;
+      }
+
+      if (context.input.consumeActionPress('rotate')) {
+        rotateFallingBlocksPiece(state);
+        shouldSync = true;
+      }
+
+      if (context.input.isActionPressed('moveDown')) {
+        moveFallingBlocksDown(state);
+        shouldSync = true;
+      }
+
+      if (context.input.consumeActionPress('hardDrop')) {
+        hardDropFallingBlocksPiece(state);
+        shouldSync = true;
+      }
+
       dropElapsedMs += frame.deltaMs;
 
       if (dropElapsedMs >= 600) {
         dropElapsedMs = 0;
         moveFallingBlocksDown(state);
-        rotateFallingBlocksPiece(state);
+        shouldSync = true;
+      }
+
+      if (shouldSync) {
         syncMeshes(scene);
       }
     }
@@ -268,7 +340,7 @@ export const createFallingBlocksModule = (
 export const fallingBlocksGameCartridge: GameCartridge<FallingBlocksMessageKey> = {
   capabilities: {
     graphics: 'scene-graph-3d',
-    input: 'keyboard',
+    input: 'mapped-actions',
     networking: 'none'
   },
   createModule: createFallingBlocksModule,

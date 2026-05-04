@@ -149,6 +149,7 @@ The repository currently treats ESLint warnings as failures through the root lin
 ### Workspace Imports
 
 - shared package imports use workspace aliases such as `@game-forge/runtime`
+- mapped gameplay input uses `@game-forge/input`; cartridges read semantic actions from `GameCartridgeContext.input` instead of listening to browser events directly
 - generic resource loading uses `@game-forge/resources`
 - shared bundled resources use `@game-forge/shared-resources`
 - localization primitives use the shared `@game-forge/i18n` workspace package with external `translations/*.json` files
@@ -193,11 +194,13 @@ The repository currently treats ESLint warnings as failures through the root lin
 - the SDK package is `packages/game-cartridge` with package name `@game-forge/game-cartridge`
 - concrete built-in game packages live under `packages/games/*`
 - cartridges should declare capabilities for graphics, input, and future networking
+- cartridges should declare `input: 'mapped-actions'` and consume semantic actions such as `moveLeft`, `moveRight`, `moveDown`, `rotate`, `fire`, and `hardDrop`
 - cartridges should declare private resources with keys prefixed by the cartridge id
 - cartridge-private resource files belong under `packages/games/<game-id>/assets/`
 - cartridge code should read resources through `GameCartridgeContext.resources`
 - cartridges should respond to platform session stop requests through `RuntimeModule.onStopRequested()` when they need to save, settle, or cancel exit
 - cartridges should not draw platform navigation controls such as the return-to-lobby button or exit confirmation dialog
+- cartridges should not register DOM, Gamepad, or virtual-device listeners directly; the game client owns input sources and disposes them with the game session
 - the game-client shell owns transient game-session controls and confirms player-initiated exits before calling `RenderApp.requestStop()`
 - v1 networking is only a reserved service location; cartridges should not implement WebRTC or matchmaking directly
 

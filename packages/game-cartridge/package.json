@@ -9,6 +9,7 @@
     "@game-forge/resources": "workspace:*",
     "@game-forge/graphics": "workspace:*",
     "@game-forge/i18n": "workspace:*",
+    "@game-forge/input": "workspace:*",
     "@game-forge/runtime": "workspace:*",
     "@game-forge/wallet-core": "workspace:*"
   },

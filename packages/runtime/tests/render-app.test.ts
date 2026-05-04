@@ -87,6 +87,51 @@ describe('create-render-app', () => {
     expect(app.isRunning()).toBe(false);
   });
 
+  test('updates injected input before the runtime module each frame', () => {
+    const frames: Array<() => void> = [];
+    const events: string[] = [];
+    const backend: RenderBackend<{ mounted: boolean }, { height: number; width: number }> = {
+      dispose: () => undefined,
+      mount: () => ({ mounted: true }),
+      render: () => {
+        events.push('render');
+      },
+      resize: () => undefined
+    };
+    const app = createRenderApp({
+      backend,
+      clock: {
+        cancelFrame: () => undefined,
+        now: () => 16,
+        requestFrame: (callback) => {
+          frames.push(callback);
+          return frames.length;
+        }
+      },
+      getSize: (host) => host,
+      host: {
+        height: 320,
+        width: 480
+      },
+      input: {
+        update: () => {
+          events.push('input');
+        }
+      },
+      module: {
+        setup: () => undefined,
+        update: () => {
+          events.push('update');
+        }
+      }
+    });
+
+    app.start();
+    frames.shift()?.();
+
+    expect(events).toEqual(['input', 'update', 'render']);
+  });
+
   test('requestStop notifies the runtime module before stopping', async () => {
     const events: string[] = [];
     const backend: RenderBackend<{ mounted: boolean }, { height: number; width: number }> = {

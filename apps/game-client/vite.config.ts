@@ -7,9 +7,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          graphics: ['@game-forge/graphics']
-        }
+        manualChunks: (id) => (id.includes('@game-forge/graphics') ? 'graphics' : undefined)
       }
     }
   },

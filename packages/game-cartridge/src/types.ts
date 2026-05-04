@@ -1,6 +1,7 @@
 import type { ResourceManager, ResourceRecord } from '@game-forge/resources';
 import type { GraphicsRenderScene } from '@game-forge/graphics';
 import type { LocaleCode, TranslationCatalogShape, TranslationParams } from '@game-forge/i18n';
+import type { InputController } from '@game-forge/input';
 import type { RuntimeModule } from '@game-forge/runtime';
 import type { WalletAssetSnapshot } from '@game-forge/wallet-core';
 
@@ -28,6 +29,7 @@ export interface GameCartridgeContext<messageKey extends string = string> {
     readonly quantity: number;
   }[];
   readonly i18n: GameCartridgeI18n<messageKey>;
+  readonly input: InputController;
   readonly player: {
     readonly authMethod: 'username' | 'wallet' | 'wechat';
     readonly userId: string;
@@ -42,7 +44,7 @@ export interface GameCartridgeContext<messageKey extends string = string> {
 
 export interface GameCartridgeCapabilities {
   readonly graphics: 'scene-graph-3d';
-  readonly input: 'keyboard';
+  readonly input: 'mapped-actions';
   readonly matchmaking?: boolean;
   readonly networking?: 'none' | 'client-server' | 'p2p';
 }

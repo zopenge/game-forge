@@ -3,6 +3,7 @@ import type { GameCartridge, GameCartridgeContext } from '@game-forge/game-cartr
 import { createGameCartridgeRegistry } from '@game-forge/game-cartridge';
 import type { I18nStore, LocaleCode } from '@game-forge/i18n';
 import type { RenderApp, RuntimeStopReason, RuntimeStopRequest, RuntimeStopSource } from '@game-forge/runtime';
+import type { InputController } from '@game-forge/input';
 import { sharedResources as defaultSharedResources } from '@game-forge/shared-resources';
 import type { BrowserWalletRegistry, WalletAssetSnapshot } from '@game-forge/wallet-core';
 import { createBrowserWalletRegistry } from '@game-forge/wallet-core';
@@ -13,6 +14,7 @@ import type { ApiClient, AssetEntry, CurrentUser } from './api-client';
 import { createApiClient } from './api-client';
 import type { AuthStorage } from './auth-storage';
 import { createAuthStorage } from './auth-storage';
+import { createBrowserGameInputController } from './browser-input';
 import { createGameClientApp } from './create-game-client-app';
 import { gameCartridges as defaultGameCartridges } from './game-cartridges';
 import { createGameClientI18n } from './i18n/create-game-client-i18n';
@@ -42,11 +44,13 @@ export interface GameShellOptions {
   readonly gameAppFactory?: (
     host: HTMLElement,
     cartridge: GameCartridge,
-    context: GameCartridgeContext
+    context: GameCartridgeContext,
+    input: InputController
   ) => RenderApp;
   readonly gameCartridges?: readonly GameCartridge[];
   readonly host: HTMLElement;
   readonly i18n?: I18nStore<typeof gameClientMessages>;
+  readonly inputControllerFactory?: (target: EventTarget) => InputController;
   readonly resourceManagerFactory?: (resources: readonly ResourceRecord[]) => ResourceManager;
   readonly sharedResources?: readonly ResourceRecord[];
   readonly walletClient?: WalletClient;
@@ -59,11 +63,13 @@ export const createGameShell = ({
   gameAppFactory = (host, cartridge, cartridgeContext) => createGameClientApp({
     cartridge,
     cartridgeContext,
-    host
+    host,
+    input: cartridgeContext.input
   }),
   gameCartridges = defaultGameCartridges,
   host,
   i18n = createGameClientI18n(),
+  inputControllerFactory = createBrowserGameInputController,
   resourceManagerFactory = (resources) => createResourceManager({ resources }),
   sharedResources = defaultSharedResources,
   walletRegistry = createBrowserWalletRegistry([createEvmBrowserWalletAdapter()]),
@@ -88,6 +94,7 @@ export const createGameShell = ({
   let currentWalletErrorMessage: string | undefined;
   let currentWalletAssets: WalletAssetSnapshot | undefined;
   let gameApp: RenderApp | undefined;
+  let gameInput: InputController | undefined;
   let gameSessionChromeHideTimer: number | undefined;
   let gameSessionChromeState: GameSessionChromeState = 'hidden';
   let pendingExitIntentSource: GameSessionExitIntentSource | undefined;
@@ -209,7 +216,9 @@ export const createGameShell = ({
   const forceStopGame = () => {
     resetGameSessionListeners();
     gameApp?.stop();
+    gameInput?.dispose();
     gameApp = undefined;
+    gameInput = undefined;
     currentGameStopErrorMessage = undefined;
     pendingExitIntentSource = undefined;
     gameSessionChromeState = 'hidden';
@@ -242,7 +251,9 @@ export const createGameShell = ({
     }
 
     resetGameSessionListeners();
+    gameInput?.dispose();
     gameApp = undefined;
+    gameInput = undefined;
     currentGameStopErrorMessage = undefined;
     pendingExitIntentSource = undefined;
     gameSessionChromeState = 'hidden';
@@ -547,6 +558,17 @@ export const createGameShell = ({
           ...(lobbyUser.walletAddress ? { walletAddress: lobbyUser.walletAddress } : {}),
           ...(lobbyUser.walletChainId !== undefined ? { walletChainId: lobbyUser.walletChainId } : {})
         } satisfies GameCartridgeContext['player'];
+
+        currentGameStopErrorMessage = undefined;
+        const gameHost = renderGameSession(cartridge);
+
+        if (!gameHost) {
+          currentGameStopErrorMessage = i18n.t('game.error.exitFailed');
+          renderLobby();
+          return;
+        }
+
+        const nextGameInput = inputControllerFactory(gameHost);
         const cartridgeContext = {
           assets: currentAssets,
           i18n: {
@@ -564,6 +586,7 @@ export const createGameShell = ({
               });
             }
           },
+          input: nextGameInput,
           player,
           resources: resourceManager,
           services: {
@@ -574,16 +597,8 @@ export const createGameShell = ({
           ...(currentWalletAssets ? { walletAssets: currentWalletAssets } : {})
         } satisfies GameCartridgeContext;
 
-        currentGameStopErrorMessage = undefined;
-        const gameHost = renderGameSession(cartridge);
-
-        if (!gameHost) {
-          currentGameStopErrorMessage = i18n.t('game.error.exitFailed');
-          renderLobby();
-          return;
-        }
-
-        gameApp = gameAppFactory(gameHost, cartridge, cartridgeContext);
+        gameInput = nextGameInput;
+        gameApp = gameAppFactory(gameHost, cartridge, cartridgeContext, nextGameInput);
         gameApp.start();
       })();
     });
