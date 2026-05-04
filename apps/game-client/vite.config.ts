@@ -20,6 +20,10 @@ export default defineConfig({
       '/assets': backendUrl,
       '/auth': backendUrl,
       '/me': backendUrl,
+      '/signaling': {
+        target: backendUrl,
+        ws: true
+      },
       '/wallet-assets': backendUrl
     }
   }

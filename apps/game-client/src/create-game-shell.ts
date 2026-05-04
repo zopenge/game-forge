@@ -2,8 +2,11 @@ import { createResourceManager, type ResourceManager, type ResourceRecord } from
 import type { GameCartridge, GameCartridgeContext } from '@game-forge/game-cartridge';
 import { createGameCartridgeRegistry } from '@game-forge/game-cartridge';
 import type { I18nStore, LocaleCode } from '@game-forge/i18n';
+import type { GameMultiplayerService } from '@game-forge/networking';
+import { createNoopMultiplayerService } from '@game-forge/networking';
 import type { RenderApp, RuntimeStopReason, RuntimeStopRequest, RuntimeStopSource } from '@game-forge/runtime';
 import type { InputController } from '@game-forge/input';
+import { createSessionId } from '@game-forge/identity';
 import { sharedResources as defaultSharedResources } from '@game-forge/shared-resources';
 import type { BrowserWalletRegistry, WalletAssetSnapshot } from '@game-forge/wallet-core';
 import { createBrowserWalletRegistry } from '@game-forge/wallet-core';
@@ -20,6 +23,7 @@ import { gameCartridges as defaultGameCartridges } from './game-cartridges';
 import { createGameClientI18n } from './i18n/create-game-client-i18n';
 import type { gameClientMessages } from './i18n/game-client-messages';
 import { mapGameClientError } from './i18n/map-game-client-error';
+import { createP2PMultiplayerService } from '@game-forge/p2p';
 import type { WalletClient } from './wallet-client';
 import { createWalletClient } from './wallet-client';
 import { renderGameSessionView, type GameSessionChromeState } from './views/game-session-view';
@@ -32,6 +36,19 @@ const defaultGameViewport = {
   designHeight: 9,
   designWidth: 16
 };
+
+interface GameForgeImportMeta extends ImportMeta {
+  readonly env?: {
+    readonly VITE_GAME_FORGE_API_BASE_URL?: string;
+    readonly VITE_GAME_FORGE_SIGNALING_BASE_URL?: string;
+  };
+}
+
+export interface CreateMultiplayerServiceRequest {
+  readonly mode: 'create' | 'join';
+  readonly peerId: string;
+  readonly roomId: string;
+}
 
 export interface GameShell {
   resize(): void;
@@ -51,6 +68,7 @@ export interface GameShellOptions {
   readonly host: HTMLElement;
   readonly i18n?: I18nStore<typeof gameClientMessages>;
   readonly inputControllerFactory?: (target: EventTarget) => InputController;
+  readonly multiplayerServiceFactory?: (request: CreateMultiplayerServiceRequest) => Promise<GameMultiplayerService>;
   readonly resourceManagerFactory?: (resources: readonly ResourceRecord[]) => ResourceManager;
   readonly sharedResources?: readonly ResourceRecord[];
   readonly walletClient?: WalletClient;
@@ -70,6 +88,13 @@ export const createGameShell = ({
   host,
   i18n = createGameClientI18n(),
   inputControllerFactory = createBrowserGameInputController,
+  multiplayerServiceFactory = async ({ mode, peerId, roomId }) => createP2PMultiplayerService({
+    apiBaseUrl: (import.meta as GameForgeImportMeta).env?.VITE_GAME_FORGE_API_BASE_URL ?? globalThis.location?.origin ?? '',
+    mode,
+    peerId,
+    roomId,
+    signalingBaseUrl: (import.meta as GameForgeImportMeta).env?.VITE_GAME_FORGE_SIGNALING_BASE_URL
+  }),
   resourceManagerFactory = (resources) => createResourceManager({ resources }),
   sharedResources = defaultSharedResources,
   walletRegistry = createBrowserWalletRegistry([createEvmBrowserWalletAdapter()]),
@@ -89,6 +114,8 @@ export const createGameShell = ({
   let currentGameResourceErrorMessage: string | undefined;
   let currentGameStopErrorMessage: string | undefined;
   let currentLoginErrorMessage: string | undefined;
+  let currentMultiplayerRoomDraft = '';
+  let currentMultiplayerRoomErrorMessage: string | undefined;
   let currentUser: CurrentUser | undefined;
   let currentUsername = '';
   let currentWalletErrorMessage: string | undefined;
@@ -213,12 +240,16 @@ export const createGameShell = ({
     errorElement.classList.remove('hidden');
   };
 
+  let currentMultiplayerService: GameMultiplayerService | undefined;
+
   const forceStopGame = () => {
     resetGameSessionListeners();
     gameApp?.stop();
     gameInput?.dispose();
+    currentMultiplayerService?.requestLeaveRoom();
     gameApp = undefined;
     gameInput = undefined;
+    currentMultiplayerService = undefined;
     currentGameStopErrorMessage = undefined;
     pendingExitIntentSource = undefined;
     gameSessionChromeState = 'hidden';
@@ -254,6 +285,8 @@ export const createGameShell = ({
     gameInput?.dispose();
     gameApp = undefined;
     gameInput = undefined;
+    currentMultiplayerService?.requestLeaveRoom();
+    currentMultiplayerService = undefined;
     currentGameStopErrorMessage = undefined;
     pendingExitIntentSource = undefined;
     gameSessionChromeState = 'hidden';
@@ -385,6 +418,8 @@ export const createGameShell = ({
     currentGameResourceErrorMessage = undefined;
     currentGameStopErrorMessage = undefined;
     currentLoginErrorMessage = undefined;
+    currentMultiplayerRoomDraft = '';
+    currentMultiplayerRoomErrorMessage = undefined;
     currentUser = undefined;
     currentUsername = '';
     currentWalletErrorMessage = undefined;
@@ -501,6 +536,8 @@ export const createGameShell = ({
         title: translateCartridgeMessage(cartridge, cartridge.titleKey)
       })),
       locale,
+      multiplayerRoomDraft: currentMultiplayerRoomDraft,
+      multiplayerRoomErrorMessage: currentMultiplayerRoomErrorMessage,
       selectedGameCartridgeId,
       t: i18n.t,
       user: lobbyUser,
@@ -511,7 +548,10 @@ export const createGameShell = ({
     const assetIdInput = host.querySelector<HTMLInputElement>('#asset-id');
     const quantityInput = host.querySelector<HTMLInputElement>('#asset-quantity');
     const enterGameButton = host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]');
+    const createRoomButton = host.querySelector<HTMLButtonElement>('[data-role="create-room-button"]');
     const gameCartridgeButtons = host.querySelectorAll<HTMLButtonElement>('[data-role="game-cartridge-option"]');
+    const joinRoomForm = host.querySelector<HTMLFormElement>('[data-role="join-room-form"]');
+    const roomIdInput = host.querySelector<HTMLInputElement>('[data-role="room-id-input"]');
     const logoutButton = host.querySelector<HTMLButtonElement>('[data-role="logout-button"]');
 
     bindLocaleSwitcher();
@@ -527,80 +567,131 @@ export const createGameShell = ({
       });
     });
 
+    const startSelectedGame = async (multiplayerRequest?: CreateMultiplayerServiceRequest) => {
+      const cartridge = selectedGameCartridgeId
+        ? registry.findById(selectedGameCartridgeId)
+        : undefined;
+
+      if (!cartridge) {
+        return;
+      }
+
+      const resourceManager = resourceManagerFactory([
+        ...sharedResources,
+        ...(cartridge.resources ?? [])
+      ]);
+
+      try {
+        await resourceManager.preload();
+        currentGameResourceErrorMessage = undefined;
+      } catch {
+        currentGameResourceErrorMessage = i18n.t('lobby.error.resourceLoadFailed');
+        renderLobby();
+        return;
+      }
+
+      let multiplayerService: GameMultiplayerService = createNoopMultiplayerService();
+
+      if (multiplayerRequest) {
+        try {
+          multiplayerService = await multiplayerServiceFactory(multiplayerRequest);
+          currentMultiplayerRoomErrorMessage = undefined;
+          currentMultiplayerRoomDraft = multiplayerRequest.roomId;
+        } catch {
+          currentMultiplayerRoomErrorMessage = i18n.t('lobby.multiplayer.error.connectFailed');
+          renderLobby();
+          return;
+        }
+      }
+
+      const player = {
+        authMethod: lobbyUser.authMethod,
+        userId: lobbyUser.userId,
+        username: lobbyUser.username,
+        ...(lobbyUser.walletAddress ? { walletAddress: lobbyUser.walletAddress } : {}),
+        ...(lobbyUser.walletChainId !== undefined ? { walletChainId: lobbyUser.walletChainId } : {})
+      } satisfies GameCartridgeContext['player'];
+
+      currentGameStopErrorMessage = undefined;
+      const gameHost = renderGameSession(cartridge);
+
+      if (!gameHost) {
+        currentGameStopErrorMessage = i18n.t('game.error.exitFailed');
+        renderLobby();
+        return;
+      }
+
+      const nextGameInput = inputControllerFactory(gameHost);
+      const cartridgeContext = {
+        assets: currentAssets,
+        i18n: {
+          locale,
+          t: (key: string, params?: Record<string, string | number>) => {
+            const template = translateCartridgeMessage(cartridge, key);
+
+            if (!params) {
+              return template;
+            }
+
+            return template.replace(/\{(\w+)\}/g, (_match, token: string) => {
+              const value = params[token];
+              return value === undefined ? `{${token}}` : String(value);
+            });
+          }
+        },
+        input: nextGameInput,
+        player,
+        resources: resourceManager,
+        services: {
+          multiplayer: multiplayerService,
+          networking: {
+            isAvailable: multiplayerService.isAvailable
+          }
+        },
+        ...(currentWalletAssets ? { walletAssets: currentWalletAssets } : {})
+      } satisfies GameCartridgeContext;
+
+      currentMultiplayerService = multiplayerService;
+      gameInput = nextGameInput;
+      gameApp = gameAppFactory(gameHost, cartridge, cartridgeContext, nextGameInput);
+      gameApp.start();
+    };
+
     enterGameButton?.addEventListener('click', () => {
       void (async () => {
-        const cartridge = selectedGameCartridgeId
-          ? registry.findById(selectedGameCartridgeId)
-          : undefined;
-
-        if (!cartridge) {
-          return;
-        }
-
-        const resourceManager = resourceManagerFactory([
-          ...sharedResources,
-          ...(cartridge.resources ?? [])
-        ]);
-
-        try {
-          await resourceManager.preload();
-          currentGameResourceErrorMessage = undefined;
-        } catch {
-          currentGameResourceErrorMessage = i18n.t('lobby.error.resourceLoadFailed');
-          renderLobby();
-          return;
-        }
-
-        const player = {
-          authMethod: lobbyUser.authMethod,
-          userId: lobbyUser.userId,
-          username: lobbyUser.username,
-          ...(lobbyUser.walletAddress ? { walletAddress: lobbyUser.walletAddress } : {}),
-          ...(lobbyUser.walletChainId !== undefined ? { walletChainId: lobbyUser.walletChainId } : {})
-        } satisfies GameCartridgeContext['player'];
-
-        currentGameStopErrorMessage = undefined;
-        const gameHost = renderGameSession(cartridge);
-
-        if (!gameHost) {
-          currentGameStopErrorMessage = i18n.t('game.error.exitFailed');
-          renderLobby();
-          return;
-        }
-
-        const nextGameInput = inputControllerFactory(gameHost);
-        const cartridgeContext = {
-          assets: currentAssets,
-          i18n: {
-            locale,
-            t: (key: string, params?: Record<string, string | number>) => {
-              const template = translateCartridgeMessage(cartridge, key);
-
-              if (!params) {
-                return template;
-              }
-
-              return template.replace(/\{(\w+)\}/g, (_match, token: string) => {
-                const value = params[token];
-                return value === undefined ? `{${token}}` : String(value);
-              });
-            }
-          },
-          input: nextGameInput,
-          player,
-          resources: resourceManager,
-          services: {
-            networking: {
-              isAvailable: false
-            }
-          },
-          ...(currentWalletAssets ? { walletAssets: currentWalletAssets } : {})
-        } satisfies GameCartridgeContext;
-
-        gameInput = nextGameInput;
-        gameApp = gameAppFactory(gameHost, cartridge, cartridgeContext, nextGameInput);
-        gameApp.start();
+        await startSelectedGame();
       })();
+    });
+
+    createRoomButton?.addEventListener('click', () => {
+      void startSelectedGame({
+        mode: 'create',
+        peerId: createSessionId('peer'),
+        roomId: createSessionId('room')
+      });
+    });
+
+    roomIdInput?.addEventListener('input', () => {
+      currentMultiplayerRoomDraft = roomIdInput.value;
+    });
+
+    joinRoomForm?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const roomId = roomIdInput?.value.trim() ?? '';
+
+      currentMultiplayerRoomDraft = roomId;
+
+      if (!roomId) {
+        currentMultiplayerRoomErrorMessage = i18n.t('lobby.multiplayer.error.roomRequired');
+        renderLobby();
+        return;
+      }
+
+      void startSelectedGame({
+        mode: 'join',
+        peerId: createSessionId('peer'),
+        roomId
+      });
     });
 
     assetIdInput?.addEventListener('input', () => {

@@ -15,6 +15,8 @@ export interface LobbyViewOptions {
   readonly gameResourceErrorMessage?: string | undefined;
   readonly gameCartridges: readonly LobbyGameCartridgeView[];
   readonly locale: LocaleCode;
+  readonly multiplayerRoomDraft?: string | undefined;
+  readonly multiplayerRoomErrorMessage?: string | undefined;
   readonly selectedGameCartridgeId?: string | undefined;
   readonly t: (key: GameClientMessageKey, params?: Record<string, string | number>) => string;
   readonly user: CurrentUser;
@@ -42,6 +44,8 @@ export const renderLobbyView = ({
   gameResourceErrorMessage,
   gameCartridges,
   locale,
+  multiplayerRoomDraft,
+  multiplayerRoomErrorMessage,
   selectedGameCartridgeId,
   t,
   user,
@@ -92,6 +96,8 @@ export const renderLobbyView = ({
         </button>
       `.trim()).join('')
     : `<p class="lobby-empty">${t('lobby.gameCartridges.empty')}</p>`;
+  const selectedGameCartridge = gameCartridges.find((cartridge) => cartridge.id === selectedGameCartridgeId);
+  const selectedGameSupportsP2p = selectedGameCartridge?.capabilities.networking === 'p2p';
 
   return `
     <section class="lobby-shell">
@@ -141,7 +147,21 @@ export const renderLobbyView = ({
         </div>
         <div class="lobby-actions">
           <button type="button" data-role="enter-game-button" ${selectedGameCartridgeId ? '' : 'disabled'}>${t('lobby.action.enterGame')}</button>
+          ${selectedGameSupportsP2p ? `
+            <button type="button" data-role="create-room-button">${t('lobby.multiplayer.createRoom')}</button>
+            <form data-role="join-room-form" class="join-room-form">
+              <input
+                data-role="room-id-input"
+                name="roomId"
+                type="text"
+                placeholder="${t('lobby.multiplayer.roomCodePlaceholder')}"
+                value="${multiplayerRoomDraft ?? ''}"
+              />
+              <button type="submit">${t('lobby.multiplayer.joinRoom')}</button>
+            </form>
+          `.trim() : ''}
         </div>
+        <p data-role="multiplayer-room-error" class="portal-error ${multiplayerRoomErrorMessage ? '' : 'hidden'}">${multiplayerRoomErrorMessage ?? ''}</p>
         <p data-role="game-resource-error" class="portal-error ${gameResourceErrorMessage ? '' : 'hidden'}">${gameResourceErrorMessage ?? ''}</p>
       </div>
     </section>

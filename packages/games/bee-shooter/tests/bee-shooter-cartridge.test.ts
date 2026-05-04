@@ -1,7 +1,8 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import type { GameCartridgeContext } from '@game-forge/game-cartridge';
 import { createInputController, createVirtualInputSource } from '@game-forge/input';
+import { createGameMultiplayerService, createNoopMultiplayerService } from '@game-forge/networking';
 import { createResourceManager } from '@game-forge/resources';
 
 import { createTestGraphicsScene } from '../../../../tests/helpers/create-test-graphics-scene';
@@ -36,6 +37,7 @@ const createContext = (input = createInput().input): GameCartridgeContext => ({
     username: 'pilot'
   },
   services: {
+    multiplayer: createNoopMultiplayerService(),
     networking: {
       isAvailable: false
     }
@@ -51,7 +53,7 @@ describe('bee-shooter-game-cartridge', () => {
     expect(beeShooterGameCartridge.capabilities).toEqual({
       graphics: 'scene-graph-3d',
       input: 'mapped-actions',
-      networking: 'none'
+      networking: 'p2p'
     });
     expect(beeShooterGameCartridge.viewport).toEqual({
       designHeight: 9,
@@ -140,5 +142,92 @@ describe('bee-shooter-game-cartridge', () => {
       kind: 'json'
     }));
     expect(module).toBeDefined();
+  });
+
+  test('host broadcasts bee snapshots through the abstract multiplayer service', () => {
+    const send = vi.fn();
+    const multiplayer = createGameMultiplayerService({
+      close: vi.fn(),
+      localPeerId: 'peer-host',
+      peers: [{
+        id: 'peer-guest',
+        role: 'guest'
+      }],
+      role: 'host',
+      roomId: 'room-1',
+      send
+    });
+    const module = beeShooterGameCartridge.createModule({
+      ...createContext(),
+      services: {
+        multiplayer,
+        networking: {
+          isAvailable: true
+        }
+      }
+    });
+    const renderScene = createTestGraphicsScene();
+
+    const teardown = module.setup({ scene: renderScene });
+    module.update({
+      frame: {
+        deltaMs: 16,
+        elapsedMs: 16
+      },
+      scene: renderScene
+    });
+
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      channel: 'bee.snapshot',
+      type: 'game-message'
+    }));
+
+    teardown?.();
+  });
+
+  test('guest sends input and waits for host snapshots instead of firing locally', () => {
+    const { input, virtualInput } = createInput();
+    const send = vi.fn();
+    const multiplayer = createGameMultiplayerService({
+      close: vi.fn(),
+      localPeerId: 'peer-guest',
+      peers: [{
+        id: 'peer-host',
+        role: 'host'
+      }],
+      role: 'guest',
+      roomId: 'room-1',
+      send
+    });
+    const module = beeShooterGameCartridge.createModule({
+      ...createContext(input),
+      services: {
+        multiplayer,
+        networking: {
+          isAvailable: true
+        }
+      }
+    });
+    const renderScene = createTestGraphicsScene();
+    const teardown = module.setup({ scene: renderScene });
+    const root = renderScene.scene.children[0]!;
+    const initialChildren = root.children.length;
+
+    virtualInput.setControl('fire', 1);
+    module.update({
+      frame: {
+        deltaMs: 16,
+        elapsedMs: 16
+      },
+      scene: renderScene
+    });
+
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      channel: 'bee.input',
+      type: 'game-message'
+    }));
+    expect(root.children.length).toBe(initialChildren);
+
+    teardown?.();
   });
 });

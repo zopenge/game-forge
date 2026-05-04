@@ -15,6 +15,8 @@ export default defineConfig({
       '@game-forge/i18n': resolve(__dirname, 'packages/i18n/src/index.ts'),
       '@game-forge/identity': resolve(__dirname, 'packages/identity/src/index.ts'),
       '@game-forge/input': resolve(__dirname, 'packages/input/src/index.ts'),
+      '@game-forge/networking': resolve(__dirname, 'packages/networking/src/index.ts'),
+      '@game-forge/p2p': resolve(__dirname, 'packages/p2p/src/index.ts'),
       '@game-forge/platform': resolve(__dirname, 'packages/platform/src/index.ts'),
       '@game-forge/resources': resolve(__dirname, 'packages/resources/src/index.ts'),
       '@game-forge/runtime': resolve(__dirname, 'packages/runtime/src/index.ts'),

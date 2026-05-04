@@ -86,6 +86,7 @@ Fastify backend for authentication and asset management.
 - Supports WeChat Mini Program automatic login and optional phone binding
 - Issues JWTs for authenticated sessions
 - Exposes local game assets and wallet-backed asset views through separate APIs
+- Exposes local `/signaling/:roomId` WebSocket rooms for local multiplayer debugging without Cloudflare or hosted services
 
 Key files:
 
@@ -146,6 +147,25 @@ Owns the game cartridge SDK shared by the platform and individual games.
 
 The package is singular because it defines the protocol for one cartridge. Concrete games live under `packages/games/*`. Its public entrypoint re-exports focused `types` and `registry` modules.
 
+### `packages/networking`
+
+Owns transport-neutral multiplayer contracts and helpers.
+
+- `GameMultiplayerService`
+- `GameRoomSession`
+- `GameRoomPeer`
+- noop multiplayer service for single-player sessions
+- room/game-message dispatch helpers used by platform adapters
+
+### `packages/p2p`
+
+Owns the current browser P2P adapter boundary.
+
+- derives local or production signaling URLs
+- connects to signaling rooms
+- adapts low-level room traffic into `@game-forge/networking`
+- keeps transport details out of game cartridges
+
 ### `packages/games/bee-shooter`
 
 Small built-in shooter cartridge for testing the cartridge lifecycle.
@@ -154,6 +174,7 @@ Small built-in shooter cartridge for testing the cartridge lifecycle.
 - Provides localized cartridge metadata through `translations/*.json` and `@game-forge/i18n`
 - Declares private resources through `resource-manifests/*.json` and receives a resource manager through cartridge context
 - Exercises player movement, projectiles, enemy motion, collision, and scoring behavior
+- Declares `p2p` networking and uses only the abstract multiplayer service for co-op input and snapshots
 
 ### `packages/games/falling-blocks`
 
@@ -270,14 +291,15 @@ WeChat Mini Program APIs stay in `apps/wechat-mini-program/src/platform` while o
 - Bundled packages pass a generated asset URL map into `createResourceRecordsFromManifests()` so manifest paths resolve to packaged URLs instead of dynamic source-relative paths.
 - `@game-forge/resources` does not depend on renderer packages; games can pass resolved URLs to graphics abstractions when needed.
 
-## Multiplayer Extension Points
+## Multiplayer
 
-Multiplayer is intentionally not implemented in v1. Future networking work should add shared packages instead of putting transport code inside each game.
+Multiplayer is implemented behind shared package boundaries instead of inside each game.
 
-- `packages/networking`: shared network session, message protocol, connection state, and reconnect behavior
-- `packages/p2p` or `packages/networking/webrtc`: WebRTC signaling, peer connection, and data channel adapters
-- `apps/backend/src/routes` and `apps/backend/src/services`: rooms, matchmaking, invitations, and signaling relay
-- `GameCartridgeContext.services.networking`: platform-injected API that cartridges use instead of directly depending on WebRTC or backend details
+- `packages/networking`: shared room session, message dispatch, noop service, and transport-neutral multiplayer contracts
+- `packages/p2p`: current browser adapter for room signaling and peer message transport
+- `apps/backend/src/services/signaling-room-service.ts`: local-first in-memory signaling rooms for development and lightweight demos
+- `apps/edge/src/signaling`: optional Cloudflare Workers signaling entrypoint for hosted edge deployments
+- `GameCartridgeContext.services.multiplayer`: platform-injected API that cartridges use instead of depending on WebRTC, WebSocket, Cloudflare, or backend route details
 
 ## Game Localization
 

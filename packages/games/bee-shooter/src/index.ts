@@ -51,17 +51,58 @@ interface Enemy {
   readonly speedX: number;
 }
 
+interface BeeInputMessage {
+  readonly fire: boolean;
+  readonly moveLeft: number;
+  readonly moveRight: number;
+}
+
+interface BeeSnapshotMessage {
+  readonly enemies: readonly {
+    readonly x: number;
+    readonly y: number;
+  }[];
+  readonly players: readonly {
+    readonly peerId: string;
+    readonly x: number;
+  }[];
+  readonly projectiles: readonly {
+    readonly x: number;
+    readonly y: number;
+  }[];
+  readonly score: number;
+}
+
+const beeInputChannel = 'bee.input';
+const beeSnapshotChannel = 'bee.snapshot';
+
+const isBeeSnapshotMessage = (payload: unknown): payload is BeeSnapshotMessage => (
+  typeof payload === 'object'
+  && payload !== null
+  && Array.isArray((payload as BeeSnapshotMessage).players)
+  && Array.isArray((payload as BeeSnapshotMessage).projectiles)
+  && Array.isArray((payload as BeeSnapshotMessage).enemies)
+  && typeof (payload as BeeSnapshotMessage).score === 'number'
+);
+
 export const createBeeShooterModule = (
   context: GameCartridgeContext<BeeShooterMessageKey>
 ): RuntimeModule<GraphicsRenderScene> => {
   const projectiles: Projectile[] = [];
   const enemies: Enemy[] = [];
+  const multiplayer = context.services.multiplayer;
+  const multiplayerSession = multiplayer?.session;
+  const remoteInputByPeer = new Map<string, BeeInputMessage>();
+  const localPeerId = multiplayerSession?.localPeerId ?? context.player.userId;
+  let remotePlayer: GraphicsNode | undefined;
   let player: GraphicsNode | undefined;
   let root: GraphicsNode | undefined;
   let sceneGraph: GraphicsSceneNode | undefined;
   let score = 0;
+  let unsubscribeInput: () => void = () => undefined;
+  let unsubscribeSnapshot: () => void = () => undefined;
 
-  const createProjectile = () => {
+  const createProjectile = (x = player?.position.x ?? 0) => {
     if (!root || !sceneGraph) {
       return;
     }
@@ -73,7 +114,7 @@ export const createBeeShooterModule = (
       radius: 0.06,
       widthSegments: 12
     });
-    node.position.set(player?.position.x ?? 0, -1.2, 0);
+    node.position.set(x, -1.2, 0);
     root.add(node);
     projectiles.push({
       node,
@@ -114,6 +155,47 @@ export const createBeeShooterModule = (
     enemies.splice(enemies.indexOf(enemy), 1);
   };
 
+  const applySnapshot = (snapshot: BeeSnapshotMessage) => {
+    if (!player) {
+      return;
+    }
+
+    const localPlayerSnapshot = snapshot.players.find((nextPlayer) => nextPlayer.peerId === localPeerId);
+    const remotePlayerSnapshot = snapshot.players.find((nextPlayer) => nextPlayer.peerId !== localPeerId);
+
+    if (localPlayerSnapshot) {
+      player.position.x = localPlayerSnapshot.x;
+    }
+
+    if (remotePlayer && remotePlayerSnapshot) {
+      remotePlayer.position.x = remotePlayerSnapshot.x;
+    }
+
+    score = snapshot.score;
+  };
+
+  const createSnapshot = (): BeeSnapshotMessage => ({
+    enemies: enemies.map((enemy) => ({
+      x: enemy.node.position.x,
+      y: enemy.node.position.y
+    })),
+    players: [
+      {
+        peerId: localPeerId,
+        x: player?.position.x ?? 0
+      },
+      ...(remotePlayer && multiplayerSession?.peers[0] ? [{
+        peerId: multiplayerSession.peers[0].id,
+        x: remotePlayer.position.x
+      }] : [])
+    ],
+    projectiles: projectiles.map((projectile) => ({
+      x: projectile.node.position.x,
+      y: projectile.node.position.y
+    })),
+    score
+  });
+
   return {
     setup: ({ scene }) => {
       root = scene.scene.createGroup();
@@ -143,6 +225,31 @@ export const createBeeShooterModule = (
 
       root.add(ambientLight, directionalLight, player);
 
+      if (multiplayer?.isAvailable) {
+        remotePlayer = scene.scene.createBox({
+          color: 0xff8fc7,
+          depth: 0.18,
+          height: 0.16,
+          metalness: 0.18,
+          roughness: 0.38,
+          width: 0.42
+        });
+        remotePlayer.position.set(0.36, -1.45, 0);
+        root.add(remotePlayer);
+      }
+
+      if (multiplayer && multiplayerSession?.role === 'host') {
+        unsubscribeInput = multiplayer.onGameMessage(beeInputChannel, (message) => {
+          remoteInputByPeer.set(message.fromPeerId, message.payload as BeeInputMessage);
+        });
+      } else if (multiplayer && multiplayerSession?.role === 'guest') {
+        unsubscribeSnapshot = multiplayer.onGameMessage(beeSnapshotChannel, (message) => {
+          if (isBeeSnapshotMessage(message.payload)) {
+            applySnapshot(message.payload);
+          }
+        });
+      }
+
       for (let index = 0; index < 5; index += 1) {
         createEnemy(index);
       }
@@ -159,7 +266,10 @@ export const createBeeShooterModule = (
 
         projectiles.length = 0;
         enemies.length = 0;
+        unsubscribeInput();
+        unsubscribeSnapshot();
         player = undefined;
+        remotePlayer = undefined;
         root = undefined;
         sceneGraph = undefined;
       };
@@ -169,11 +279,42 @@ export const createBeeShooterModule = (
         return;
       }
 
-      const movement = context.input.getActionValue('moveRight') - context.input.getActionValue('moveLeft');
+      const localInput = {
+        fire: context.input.consumeActionPress('fire'),
+        moveLeft: context.input.getActionValue('moveLeft'),
+        moveRight: context.input.getActionValue('moveRight')
+      } satisfies BeeInputMessage;
+
+      if (multiplayerSession?.role === 'guest') {
+        multiplayer?.sendGameMessage(beeInputChannel, localInput);
+        return;
+      }
+
+      const movement = localInput.moveRight - localInput.moveLeft;
       player.position.x = Math.max(-1.55, Math.min(1.55, player.position.x + movement * frame.deltaMs * 0.004));
 
-      if (context.input.consumeActionPress('fire')) {
+      if (localInput.fire) {
         createProjectile();
+      }
+
+      if (remotePlayer) {
+        const remoteInput = [...remoteInputByPeer.values()][0];
+
+        if (remoteInput) {
+          const remoteMovement = remoteInput.moveRight - remoteInput.moveLeft;
+          remotePlayer.position.x = Math.max(
+            -1.55,
+            Math.min(1.55, remotePlayer.position.x + remoteMovement * frame.deltaMs * 0.004)
+          );
+
+          if (remoteInput.fire) {
+            createProjectile(remotePlayer.position.x);
+            remoteInputByPeer.set([...remoteInputByPeer.keys()][0] ?? 'remote', {
+              ...remoteInput,
+              fire: false
+            });
+          }
+        }
       }
 
       for (const projectile of [...projectiles]) {
@@ -204,6 +345,10 @@ export const createBeeShooterModule = (
           }
         }
       }
+
+      if (multiplayerSession?.role === 'host') {
+        multiplayer?.sendGameMessage(beeSnapshotChannel, createSnapshot());
+      }
     }
   };
 };
@@ -212,7 +357,7 @@ export const beeShooterGameCartridge: GameCartridge<BeeShooterMessageKey> = {
   capabilities: {
     graphics: 'scene-graph-3d',
     input: 'mapped-actions',
-    networking: 'none'
+    networking: 'p2p'
   },
   createModule: createBeeShooterModule,
   descriptionKey: 'bee-shooter.description',

@@ -24,6 +24,8 @@
       "@game-forge/i18n": ["./packages/i18n/src/index.ts"],
       "@game-forge/identity": ["./packages/identity/src/index.ts"],
       "@game-forge/input": ["./packages/input/src/index.ts"],
+      "@game-forge/networking": ["./packages/networking/src/index.ts"],
+      "@game-forge/p2p": ["./packages/p2p/src/index.ts"],
       "@game-forge/platform": ["./packages/platform/src/index.ts"],
       "@game-forge/resources": ["./packages/resources/src/index.ts"],
       "@game-forge/runtime": ["./packages/runtime/src/index.ts"],

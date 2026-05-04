@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createInputController } from '@game-forge/input';
 import type { ResourceManager, ResourceRecord } from '@game-forge/resources';
 import type { GameCartridgeContext } from '@game-forge/game-cartridge';
+import { createNoopMultiplayerService } from '@game-forge/networking';
 import type { RenderApp } from '@game-forge/runtime';
 
 import { createGameShell } from '../src/create-game-shell';
@@ -684,6 +685,9 @@ describe('create-game-shell', () => {
       }),
       resources: expect.any(Object),
       services: {
+        multiplayer: expect.objectContaining({
+          isAvailable: false
+        }),
         networking: {
           isAvailable: false
         }
@@ -695,6 +699,79 @@ describe('create-game-shell', () => {
     await flushPromises();
 
     expect(dispose).toHaveBeenCalledOnce();
+  });
+
+  test('lobby shows room controls for P2P cartridges and injects joined multiplayer service', async () => {
+    const host = document.createElement('div');
+    const start = vi.fn();
+    const multiplayerService = createNoopMultiplayerService();
+    const multiplayerServiceFactory = vi.fn(async () => multiplayerService);
+    const createModule = vi.fn();
+    const shell = createGameShell({
+      apiClient: createApiClientStub(),
+      authStorage: createMemoryAuthStorage('token-1'),
+      gameAppFactory: (_host, _cartridge, context) => {
+        createModule(context);
+
+        return createRenderAppStub({
+          start
+        });
+      },
+      gameCartridges: [{
+        capabilities: {
+          graphics: 'scene-graph-3d',
+          input: 'mapped-actions',
+          networking: 'p2p'
+        },
+        createModule: () => ({
+          setup: () => undefined,
+          update: () => undefined
+        }),
+        descriptionKey: 'game.description',
+        id: 'p2p-cartridge',
+        messages: {
+          'en-US': {
+            'game.description': 'A P2P cartridge',
+            'game.tag': 'Co-op',
+            'game.title': 'P2P Cartridge'
+          },
+          'zh-CN': {
+            'game.description': 'P2P 合作卡带',
+            'game.tag': '合作',
+            'game.title': 'P2P 卡带'
+          }
+        },
+        tagKeys: ['game.tag'],
+        themeColor: '#69d1ff',
+        titleKey: 'game.title'
+      }],
+      host,
+      multiplayerServiceFactory,
+      resourceManagerFactory: () => createResourceManagerStub()
+    });
+
+    await shell.start();
+
+    expect(host.querySelector('[data-role="create-room-button"]')).not.toBeNull();
+    expect(host.querySelector('[data-role="join-room-form"]')).not.toBeNull();
+
+    host.querySelector<HTMLInputElement>('[data-role="room-id-input"]')!.value = 'room-7';
+    host.querySelector<HTMLFormElement>('[data-role="join-room-form"]')!.dispatchEvent(new Event('submit', {
+      bubbles: true,
+      cancelable: true
+    }));
+    await flushPromises();
+
+    expect(multiplayerServiceFactory).toHaveBeenCalledWith(expect.objectContaining({
+      mode: 'join',
+      roomId: 'room-7'
+    }));
+    expect(createModule).toHaveBeenCalledWith(expect.objectContaining({
+      services: expect.objectContaining({
+        multiplayer: multiplayerService
+      })
+    }));
+    expect(start).toHaveBeenCalledOnce();
   });
 
   test('preloads shared and selected cartridge resources before starting the game', async () => {

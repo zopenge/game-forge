@@ -12,7 +12,9 @@
     "@game-forge/identity": "workspace:*",
     "@game-forge/wallet-core": "workspace:*",
     "@game-forge/wallet-evm": "workspace:*",
-    "fastify": "^5.8.5"
+    "@types/ws": "^8.18.1",
+    "fastify": "^5.8.5",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@fastify/cors": "^10.1.0",

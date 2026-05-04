@@ -19,6 +19,7 @@ export interface DurableObjectState {
 }
 
 export interface EdgeWebSocket extends WebSocket {
+  accept(): void;
   deserializeAttachment(): unknown;
   serializeAttachment(value: unknown): void;
 }

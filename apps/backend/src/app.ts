@@ -19,6 +19,7 @@ import { createWalletAssetService } from './services/wallet-asset-service';
 import { createWalletAuthService } from './services/wallet-auth-service';
 import { createWechatAuthClient, type WechatAuthClient } from './services/wechat-auth-client';
 import { createWechatAuthService } from './services/wechat-auth-service';
+import { createSignalingRoomService } from './services/signaling-room-service';
 import { createAssetStore, type AssetStore } from './storage/asset-store';
 import { createUserStore, type UserStore } from './storage/user-store';
 import { createWalletChallengeStore, type WalletChallengeStore } from './storage/wallet-challenge-store';
@@ -45,6 +46,16 @@ export const buildApp = async ({
   wechatAuthClient = createWechatAuthClient()
 }: BuildAppOptions = {}): Promise<FastifyInstance> => {
   const app = fastify();
+  const signalingRoomService = createSignalingRoomService();
+
+  app.server.on('upgrade', (request, socket, head) => {
+    if (!signalingRoomService.handleUpgrade(request, socket, head)) {
+      socket.destroy();
+    }
+  });
+  app.addHook('onClose', async () => {
+    signalingRoomService.close();
+  });
 
   await app.register(fastifyCors, {
     origin: true

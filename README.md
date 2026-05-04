@@ -31,6 +31,8 @@ This starts:
 
 The root development runner prefers these default ports, automatically moves a service to the next available port when a default is busy, opens browser pages when services are ready, and lets you stop the whole stack with `Ctrl+C`.
 
+Local multiplayer rooms are available in the same stack. The game client proxies `/signaling` WebSocket traffic to the local backend, so two browser windows can create and join a Bee Shooter co-op room without Cloudflare, Render, or any hosted service.
+
 ## Deployment
 
 The repository includes deployment configuration for Render, Vercel, and an optional Cloudflare Workers edge entrypoint:
@@ -56,7 +58,7 @@ Then deploy from the repository root:
 pnpm deploy:cloudflare:edge
 ```
 
-Workers do not use `HOST` or `PORT`; those values are only for local Node and Render services. The edge app handles CORS, request normalization, optional API-key or bearer-token shape checks, backend proxying under `/api/*`, and WebRTC signaling under `/signaling/:roomId`. It must not own core business logic or critical persistent data.
+Workers do not use `HOST` or `PORT`; those values are only for local Node and Render services. The edge app handles CORS, request normalization, optional API-key or bearer-token shape checks, backend proxying under `/api/*`, and optional production signaling under `/signaling/:roomId`. Local development uses the backend signaling route by default. The edge app must not own core business logic or critical persistent data.
 
 For a Render backend Web Service, create a local import file before configuring the Render `Environment` page:
 

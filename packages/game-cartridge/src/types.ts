@@ -2,6 +2,7 @@ import type { ResourceManager, ResourceRecord } from '@game-forge/resources';
 import type { GraphicsRenderScene } from '@game-forge/graphics';
 import type { LocaleCode, TranslationCatalogShape, TranslationParams } from '@game-forge/i18n';
 import type { InputController } from '@game-forge/input';
+import type { GameMultiplayerService } from '@game-forge/networking';
 import type { RuntimeModule } from '@game-forge/runtime';
 import type { WalletAssetSnapshot } from '@game-forge/wallet-core';
 
@@ -20,6 +21,7 @@ export interface GameCartridgeNetworkingService {
 }
 
 export interface GameCartridgeServices {
+  readonly multiplayer?: GameMultiplayerService;
   readonly networking?: GameCartridgeNetworkingService;
 }
 

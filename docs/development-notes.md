@@ -39,6 +39,7 @@ pnpm dev:game-client:logged
 - It starts `backend`, `game-client`, and `admin-panel` together.
 - It prefers ports `3001`, `5173`, and `5174`, but automatically uses the next available port when a default is busy.
 - It passes the selected backend URL into the game client Vite proxy so API routes continue to work after a port fallback.
+- It proxies `/signaling` WebSocket traffic to the selected backend so local multiplayer rooms work with only `backend` and `game-client` running.
 - It loads root `.env` values for local development before starting managed services.
 - It opens browser pages automatically when browser-facing services are ready.
 - `Ctrl+C` in the root terminal should stop the managed development stack together.
@@ -56,6 +57,7 @@ $env:GAME_FORGE_OPEN_BROWSER='0'; pnpm dev
 - Do not commit real `.env` files; `.gitignore` ignores `.env` and `.env.*` while allowing `.env.example`.
 - Keep production values such as backend `JWT_SECRET`, RPC URLs, Cloudflare `EDGE_API_KEY`, and frontend API URLs in the matching hosting environment-variable dashboard.
 - `VITE_GAME_FORGE_API_BASE_URL` tells static frontends where the backend API lives; leave it as `http://127.0.0.1:3001` locally or set it to the hosted backend URL in production.
+- `VITE_GAME_FORGE_SIGNALING_BASE_URL` optionally tells static frontends where room signaling lives. Leave it empty locally so the game client derives signaling from the API target or Vite `/signaling` proxy.
 - `HOST=0.0.0.0` is required for hosted backend services such as Render; local development should keep `HOST=127.0.0.1`. Cloudflare Workers do not use `HOST` or `PORT`.
 - `WECHAT_APP_ID` and `WECHAT_APP_SECRET` are backend-only values used to exchange WeChat Mini Program login and phone codes; never put the secret in mini program source.
 
@@ -73,7 +75,7 @@ $env:GAME_FORGE_OPEN_BROWSER='0'; pnpm dev
 
 The Cloudflare Workers deployment uses `wrangler.jsonc` at the repository root and runs `apps/edge`. This app is optional; the primary backend remains `apps/backend` on a Node host such as Render.
 
-The edge app is an API gateway and signaling layer. It handles CORS, request normalization, optional API-key or bearer-token shape checks, proxying `/api/*` to the primary backend, and WebRTC signaling on `/signaling/:roomId` through Durable Objects. It must not implement core business logic or store critical persistent data.
+The edge app is an API gateway and optional production signaling layer. It handles CORS, request normalization, optional API-key or bearer-token shape checks, proxying `/api/*` to the primary backend, and signaling on `/signaling/:roomId` through Durable Objects. Local development uses the Node backend signaling route instead. The edge app must not implement core business logic or store critical persistent data.
 
 Configured non-secret Worker variables:
 
@@ -97,7 +99,7 @@ Cloudflare Workers edge deployment steps:
 6. Deploy the Worker with `pnpm deploy:cloudflare:edge`.
 7. After deployment, test `POST https://<worker-url>/api/auth/login`.
 8. Test signaling with a WebSocket client at `wss://<worker-url>/signaling/<room-id>`.
-9. If the frontend should use the edge entrypoint, update `VITE_GAME_FORGE_API_BASE_URL` to the Workers URL or custom domain, then redeploy the frontend.
+9. If the frontend should use the edge entrypoint for production signaling, set `VITE_GAME_FORGE_SIGNALING_BASE_URL` to the Workers URL or custom domain `/signaling` base, then redeploy the frontend.
 
 Workers do not use `HOST` or `PORT`; those values are only for local Node and Render backend services.
 Rate limiting should be enforced with Cloudflare WAF/rate limiting rules at the edge. Keep Workers stateless except for Durable Object signaling rooms.
@@ -183,6 +185,7 @@ The repository currently treats ESLint warnings as failures through the root lin
 ### Workspace Imports
 
 - shared package imports use workspace aliases such as `@game-forge/runtime`
+- multiplayer cartridges use `@game-forge/game-cartridge` service contracts; platform code can use `@game-forge/networking` and `@game-forge/p2p` adapters
 - mapped gameplay input uses `@game-forge/input`; cartridges read semantic actions from `GameCartridgeContext.input` instead of listening to browser events directly
 - generic resource loading uses `@game-forge/resources`
 - shared bundled resources use `@game-forge/shared-resources`
@@ -236,7 +239,7 @@ The repository currently treats ESLint warnings as failures through the root lin
 - cartridges should not draw platform navigation controls such as the return-to-lobby button or exit confirmation dialog
 - cartridges should not register DOM, Gamepad, or virtual-device listeners directly; the game client owns input sources and disposes them with the game session
 - the game-client shell owns transient game-session controls and confirms player-initiated exits before calling `RenderApp.requestStop()`
-- v1 networking is only a reserved service location; cartridges should not implement WebRTC or matchmaking directly
+- multiplayer support is injected through `GameCartridgeContext.services.multiplayer`; cartridges must not implement WebRTC, WebSocket signaling, Cloudflare routing, or matchmaking directly
 
 ### Resource Loading
 
