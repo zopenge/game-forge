@@ -37,13 +37,6 @@ const defaultGameViewport = {
   designWidth: 16
 };
 
-interface GameForgeImportMeta extends ImportMeta {
-  readonly env?: {
-    readonly VITE_GAME_FORGE_API_BASE_URL?: string;
-    readonly VITE_GAME_FORGE_SIGNALING_BASE_URL?: string;
-  };
-}
-
 export interface CreateMultiplayerServiceRequest {
   readonly mode: 'create' | 'join';
   readonly peerId: string;
@@ -89,11 +82,11 @@ export const createGameShell = ({
   i18n = createGameClientI18n(),
   inputControllerFactory = createBrowserGameInputController,
   multiplayerServiceFactory = async ({ mode, peerId, roomId }) => createP2PMultiplayerService({
-    apiBaseUrl: (import.meta as GameForgeImportMeta).env?.VITE_GAME_FORGE_API_BASE_URL ?? globalThis.location?.origin ?? '',
+    apiBaseUrl: import.meta.env.VITE_GAME_FORGE_API_BASE_URL ?? globalThis.location?.origin ?? '',
     mode,
     peerId,
     roomId,
-    signalingBaseUrl: (import.meta as GameForgeImportMeta).env?.VITE_GAME_FORGE_SIGNALING_BASE_URL
+    signalingBaseUrl: import.meta.env.VITE_GAME_FORGE_SIGNALING_BASE_URL
   }),
   resourceManagerFactory = (resources) => createResourceManager({ resources }),
   sharedResources = defaultSharedResources,

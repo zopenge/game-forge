@@ -33,7 +33,7 @@ const resourceUrls = (import.meta as ImportMetaWithResourceGlob).glob('../assets
   eager: true,
   import: 'default',
   query: '?url'
-});
+}) as ResourceUrlMap;
 
 export const fallingBlocksResources = createResourceRecordsFromManifests(
   [coreResourceManifest as ResourceManifest],

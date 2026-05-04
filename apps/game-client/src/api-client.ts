@@ -65,12 +65,6 @@ export interface ApiClientOptions {
   readonly fetchImpl?: typeof fetch;
 }
 
-interface GameForgeImportMeta extends ImportMeta {
-  readonly env?: {
-    readonly VITE_GAME_FORGE_API_BASE_URL?: string;
-  };
-}
-
 const assertSuccess = async (response: Response) => {
   if (response.ok) {
     return response;
@@ -91,7 +85,7 @@ const assertSuccess = async (response: Response) => {
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 
 export const createApiClient = ({
-  baseUrl = (import.meta as GameForgeImportMeta).env?.VITE_GAME_FORGE_API_BASE_URL,
+  baseUrl = import.meta.env.VITE_GAME_FORGE_API_BASE_URL,
   fetchImpl = fetch
 }: ApiClientOptions = {}): ApiClient => {
   const resolvedBaseUrl = baseUrl ? trimTrailingSlash(baseUrl) : '';
