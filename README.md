@@ -33,15 +33,30 @@ The root development runner prefers these default ports, automatically moves a s
 
 ## Deployment
 
-The repository includes deployment configuration for Render and Vercel:
+The repository includes deployment configuration for Render, Vercel, and an optional Cloudflare Workers edge entrypoint:
 
+- `wrangler.jsonc` deploys `apps/edge` to Cloudflare Workers as an optional edge API entrypoint.
 - `render.yaml` deploys the backend, game client, and admin panel together.
 - `vercel.json` deploys the game client when a Vercel project is connected to the repository root.
 - `apps/game-client/vercel.json` deploys the game client as a Vercel static frontend.
 - `apps/admin-panel/vercel.json` deploys the admin panel as a Vercel static frontend.
 
-Use `.env` only for local development. Production values such as `JWT_SECRET` and `VITE_GAME_FORGE_API_BASE_URL` should be configured in the Render or Vercel dashboard, not committed to git. Vercel frontends should point `VITE_GAME_FORGE_API_BASE_URL` at the hosted backend URL.
+Use `.env` only for local development. Production values such as backend `JWT_SECRET`, Cloudflare `EDGE_API_KEY`, and frontend `VITE_GAME_FORGE_API_BASE_URL` should be configured in the hosting dashboard, not committed to git. Vercel frontends should point `VITE_GAME_FORGE_API_BASE_URL` at the hosted backend URL.
 WeChat Mini Program backend values use `WECHAT_APP_ID` and `WECHAT_APP_SECRET`; keep the app secret only in backend or deployment environment variables.
+
+For the optional Cloudflare Workers edge entrypoint, set the edge API key secret first:
+
+```bash
+pnpm wrangler secret put EDGE_API_KEY --config wrangler.jsonc
+```
+
+Then deploy from the repository root:
+
+```bash
+pnpm deploy:cloudflare:edge
+```
+
+Workers do not use `HOST` or `PORT`; those values are only for local Node and Render services. The edge app handles CORS, request normalization, optional API-key or bearer-token shape checks, backend proxying under `/api/*`, and WebRTC signaling under `/signaling/:roomId`. It must not own core business logic or critical persistent data.
 
 For a Render backend Web Service, create a local import file before configuring the Render `Environment` page:
 

@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 
 export default defineConfig(
   {
-    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '**/*.d.ts', '**/*.d.ts.map', '**/*.js.map']
+    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '**/.wrangler/**', '**/*.d.ts', '**/*.d.ts.map', '**/*.js.map']
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

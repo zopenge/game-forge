@@ -13,12 +13,14 @@ Package public APIs prefer `interface` types plus `createX()` factories so calle
 ```text
 game-forge/
   apps/
+    edge/
   packages/
   logs/
   scripts/
   tests/
   docs/
   rules/
+  wrangler.jsonc
   render.yaml
   vercel.json
   .env.example
@@ -91,6 +93,21 @@ Key files:
 - `src/routes/`: HTTP routes
 - `src/services/`: business logic
 - `src/storage/`: in-memory storage
+
+### `apps/edge`
+
+Optional Cloudflare Workers edge API entrypoint.
+
+- Runs from `wrangler.jsonc`
+- Acts as an API gateway for `/api/*` requests to the primary backend
+- Handles CORS, request normalization, and lightweight edge auth checks
+- Uses Durable Objects for `/signaling/:roomId` WebRTC signaling rooms
+- Stays stateless except for Durable Object room/session coordination
+- Does not own core business logic or critical persistent data
+
+Key files:
+
+- `src/worker.ts`: Cloudflare Workers entrypoint
 
 ## Shared Packages
 
@@ -330,6 +347,7 @@ Persistent repository rules for humans and coding agents.
 
 - `.env.example`: local and hosted environment-variable template; copy to ignored `.env` for local development.
 - `.render.env.example`: Render backend environment-variable template; generate ignored local values with `pnpm create:render-env`.
+- `wrangler.jsonc`: Cloudflare Workers config for the optional `apps/edge` entrypoint.
 - `render.yaml`: Render Blueprint for the backend, game client, and admin panel.
 - `vercel.json`: repository-root Vercel config for deploying the game client when Vercel is connected to the monorepo root.
 - `apps/game-client/vercel.json`: Vercel static deployment config for the game client.

@@ -11,6 +11,7 @@
     "create:render-env": "node ./scripts/create-render-env.mjs",
     "deploy:build:admin-panel": "pnpm install --frozen-lockfile && pnpm build:admin-panel",
     "deploy:build:game-client": "pnpm install --frozen-lockfile && pnpm build:game-client",
+    "deploy:cloudflare:edge": "wrangler deploy --config wrangler.jsonc",
     "deploy:start:backend": "pnpm --filter @game-forge/backend start",
     "dev": "node ./scripts/run-many.mjs",
     "start": "pnpm start:game-client",
@@ -21,6 +22,7 @@
     "start:game-client:logged": "node ./scripts/run-with-log.mjs @game-forge/game-client start .tmp-game-client-start.log",
     "dev:admin-panel": "pnpm --filter @game-forge/admin-panel dev",
     "dev:backend": "pnpm --filter @game-forge/backend dev",
+    "dev:cloudflare:edge": "wrangler dev --config wrangler.jsonc",
     "dev:game-client": "pnpm --filter @game-forge/game-client dev",
     "dev:game-client:logged": "node ./scripts/run-with-log.mjs @game-forge/game-client dev .tmp-game-client-dev.log",
     "lint": "eslint . --max-warnings 0",
@@ -30,6 +32,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260503.1",
     "@eslint/js": "^10.0.1",
     "@fastify/cors": "^11.2.0",
     "@fastify/jwt": "^10.0.0",
@@ -43,6 +46,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.1",
     "vite": "^8.0.10",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.5",
+    "wrangler": "^4.87.0"
   }
 }

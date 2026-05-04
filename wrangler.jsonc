@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "game-forge-edge",
+  "main": "apps/edge/src/worker.ts",
+  "compatibility_date": "2026-05-04",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SIGNALING_ROOMS",
+        "class_name": "SignalingRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "SignalingRoom"
+      ]
+    }
+  ],
+  "vars": {
+    "BACKEND_BASE_URL": "https://game-forge-backend.onrender.com"
+  }
+}

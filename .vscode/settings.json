@@ -1,3 +1,9 @@
 {
+  "files.exclude": {
+    "**/.wrangler": true
+  },
+  "search.exclude": {
+    "**/.wrangler": true
+  },
   "typescript.tsdk": "node_modules/typescript/lib"
 }
