@@ -26,6 +26,11 @@ import { renderLoginView } from './views/login-view';
 
 type GameSessionExitIntentSource = Exclude<RuntimeStopSource, 'session'>;
 
+const defaultGameViewport = {
+  designHeight: 9,
+  designWidth: 16
+};
+
 export interface GameShell {
   resize(): void;
   start(): Promise<void>;
@@ -276,6 +281,7 @@ export const createGameShell = ({
     const cancelExitButton = host.querySelector<HTMLButtonElement>('[data-role="cancel-exit-button"]');
     const confirmExitButton = host.querySelector<HTMLButtonElement>('[data-role="confirm-exit-button"]');
     const returnButton = host.querySelector<HTMLButtonElement>('[data-role="return-to-lobby-button"]');
+    const sidebarTrigger = host.querySelector<HTMLButtonElement>('[data-role="game-session-sidebar-trigger"]');
     const handleReturnButtonClick = () => {
       showExitConfirmation('platform-button');
     };
@@ -315,31 +321,32 @@ export const createGameShell = ({
     cancelExitButton?.addEventListener('click', handleCancelExitClick);
     confirmExitButton?.addEventListener('click', handleConfirmExitClick);
     returnButton?.addEventListener('click', handleReturnButtonClick);
-    window.addEventListener('focusin', handleRevealIntent);
+    sidebarTrigger?.addEventListener('focus', handleRevealIntent);
+    sidebarTrigger?.addEventListener('pointerdown', handleRevealIntent);
+    sidebarTrigger?.addEventListener('pointerenter', handleRevealIntent);
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('mousemove', handleRevealIntent);
     window.addEventListener('popstate', handlePopState);
-    window.addEventListener('touchstart', handleRevealIntent);
 
     stopGameSessionListeners = () => {
       cancelExitButton?.removeEventListener('click', handleCancelExitClick);
       confirmExitButton?.removeEventListener('click', handleConfirmExitClick);
       returnButton?.removeEventListener('click', handleReturnButtonClick);
-      window.removeEventListener('focusin', handleRevealIntent);
+      sidebarTrigger?.removeEventListener('focus', handleRevealIntent);
+      sidebarTrigger?.removeEventListener('pointerdown', handleRevealIntent);
+      sidebarTrigger?.removeEventListener('pointerenter', handleRevealIntent);
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('mousemove', handleRevealIntent);
       window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('touchstart', handleRevealIntent);
     };
   };
 
-  const renderGameSession = () => {
+  const renderGameSession = (selectedGameCartridge: GameCartridge) => {
     gameSessionChromeState = 'visible';
     pendingExitIntentSource = undefined;
     host.innerHTML = renderGameSessionView({
       chromeState: gameSessionChromeState,
       errorMessage: currentGameStopErrorMessage,
-      t: i18n.t
+      t: i18n.t,
+      viewport: selectedGameCartridge.viewport ?? defaultGameViewport
     });
     bindGameSessionControls();
     scheduleGameSessionChromeHide();
@@ -568,7 +575,7 @@ export const createGameShell = ({
         } satisfies GameCartridgeContext;
 
         currentGameStopErrorMessage = undefined;
-        const gameHost = renderGameSession();
+        const gameHost = renderGameSession(cartridge);
 
         if (!gameHost) {
           currentGameStopErrorMessage = i18n.t('game.error.exitFailed');

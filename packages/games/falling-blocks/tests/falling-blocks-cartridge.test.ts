@@ -6,6 +6,8 @@ import { createResourceManager } from '@game-forge/resources';
 import { createTestGraphicsScene } from '../../../../tests/helpers/create-test-graphics-scene';
 import {
   createFallingBlocksState,
+  fallingBlocksBoardHeight,
+  fallingBlocksBoardWidth,
   fallingBlocksGameCartridge,
   moveFallingBlocksDown,
   rotateFallingBlocksPiece
@@ -39,6 +41,10 @@ describe('falling-blocks-game-cartridge', () => {
       graphics: 'scene-graph-3d',
       input: 'keyboard',
       networking: 'none'
+    });
+    expect(fallingBlocksGameCartridge.viewport).toEqual({
+      designHeight: fallingBlocksBoardHeight,
+      designWidth: fallingBlocksBoardWidth
     });
     expect(fallingBlocksGameCartridge.resources?.every((resource) => resource.key.startsWith('falling-blocks.'))).toBe(true);
     expect(fallingBlocksGameCartridge.messages['en-US'][fallingBlocksGameCartridge.titleKey]).toBe('Falling Blocks');

@@ -1,3 +1,5 @@
+import type { GameCartridgeViewportConfig } from '@game-forge/game-cartridge';
+
 import type { GameClientMessageKey } from '../i18n/game-client-messages';
 
 export type GameSessionChromeState = 'visible' | 'hidden' | 'confirming' | 'error';
@@ -6,15 +8,36 @@ export interface GameSessionViewOptions {
   readonly chromeState: GameSessionChromeState;
   readonly errorMessage?: string | undefined;
   readonly t: (key: GameClientMessageKey, params?: Record<string, string | number>) => string;
+  readonly viewport: GameCartridgeViewportConfig;
 }
+
+const createViewportStyle = ({ designHeight, designWidth }: GameCartridgeViewportConfig) => (
+  `--game-design-width: ${designWidth}; --game-design-height: ${designHeight};`
+);
 
 export const renderGameSessionView = ({
   chromeState,
   errorMessage,
-  t
+  t,
+  viewport
 }: GameSessionViewOptions) => `
-  <section data-role="game-session" class="game-session" data-chrome-state="${chromeState}">
-    <div data-role="game-stage" class="game-stage"></div>
+  <section
+    data-role="game-session"
+    class="game-session"
+    data-chrome-state="${chromeState}"
+    style="${createViewportStyle(viewport)}"
+  >
+    <div data-role="game-stage-frame" class="game-stage-frame">
+      <div data-role="game-stage" class="game-stage"></div>
+    </div>
+    <button
+      type="button"
+      data-role="game-session-sidebar-trigger"
+      class="game-session-sidebar-trigger"
+      aria-label="Show game controls"
+    >
+      <span aria-hidden="true"></span>
+    </button>
     <div data-role="game-session-controls" class="game-session-controls ${chromeState}">
       <button type="button" data-role="return-to-lobby-button" class="game-return-button">
         ${t('game.action.backToLobby')}

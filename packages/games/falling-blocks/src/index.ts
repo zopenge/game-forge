@@ -278,5 +278,9 @@ export const fallingBlocksGameCartridge: GameCartridge<FallingBlocksMessageKey> 
   resources: fallingBlocksResources,
   tagKeys: ['falling-blocks.tag.puzzle', 'falling-blocks.tag.grid'],
   themeColor: '#69d1ff',
-  titleKey: 'falling-blocks.title'
+  titleKey: 'falling-blocks.title',
+  viewport: {
+    designHeight: 18,
+    designWidth: 10
+  }
 };

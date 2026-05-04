@@ -224,5 +224,9 @@ export const beeShooterGameCartridge: GameCartridge<BeeShooterMessageKey> = {
   resources: beeShooterResources,
   tagKeys: ['bee-shooter.tag.arcade', 'bee-shooter.tag.shooter'],
   themeColor: '#f5c542',
-  titleKey: 'bee-shooter.title'
+  titleKey: 'bee-shooter.title',
+  viewport: {
+    designHeight: 9,
+    designWidth: 16
+  }
 };

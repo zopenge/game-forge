@@ -325,8 +325,62 @@ describe('create-game-shell', () => {
     expect(host.querySelector('[data-role="game-session"]')).not.toBeNull();
     expect(gameHost?.dataset.role).toBe('game-stage');
     expect(host.querySelector('[data-role="game-session-controls"]')).not.toBeNull();
+    expect(host.querySelector('[data-role="game-session-sidebar-trigger"]')).not.toBeNull();
     expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('visible');
     expect(host.querySelector('[data-role="return-to-lobby-button"]')).not.toBeNull();
+  });
+
+  test('game session stage uses the selected cartridge viewport config', async () => {
+    const host = document.createElement('div');
+    const shell = createGameShell({
+      apiClient: createApiClientStub(),
+      authStorage: createMemoryAuthStorage('token-1'),
+      gameAppFactory: () => createRenderAppStub(),
+      gameCartridges: [{
+        capabilities: {
+          graphics: 'scene-graph-3d',
+          input: 'keyboard',
+          networking: 'none'
+        },
+        createModule: () => ({
+          setup: () => undefined,
+          update: () => undefined
+        }),
+        descriptionKey: 'game.description',
+        id: 'portrait-test',
+        messages: {
+          'en-US': {
+            'game.description': 'A portrait test cartridge',
+            'game.tag': 'Puzzle',
+            'game.title': 'Portrait Test'
+          },
+          'zh-CN': {
+            'game.description': '娴嬭瘯鍗″甫',
+            'game.tag': '琛楁満',
+            'game.title': '娴嬭瘯鍗″甫'
+          }
+        },
+        tagKeys: ['game.tag'],
+        themeColor: '#69d1ff',
+        titleKey: 'game.title',
+        viewport: {
+          designHeight: 18,
+          designWidth: 10
+        }
+      }],
+      host,
+      resourceManagerFactory: () => createResourceManagerStub()
+    });
+
+    await shell.start();
+    host.querySelector<HTMLButtonElement>('[data-role="enter-game-button"]')!.click();
+    await flushPromises();
+
+    const gameSession = host.querySelector<HTMLElement>('[data-role="game-session"]');
+
+    expect(gameSession?.style.getPropertyValue('--game-design-width')).toBe('10');
+    expect(gameSession?.style.getPropertyValue('--game-design-height')).toBe('18');
+    expect(host.querySelector('[data-role="game-stage-frame"]')).not.toBeNull();
   });
 
   test('game session controls auto-hide and reappear on user intent', async () => {
@@ -352,13 +406,33 @@ describe('create-game-shell', () => {
 
     window.dispatchEvent(new MouseEvent('mousemove'));
 
+    expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('hidden');
+
+    window.dispatchEvent(new Event('touchstart'));
+
+    expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('hidden');
+
+    const sidebarTrigger = host.querySelector<HTMLButtonElement>('[data-role="game-session-sidebar-trigger"]')!;
+
+    sidebarTrigger.dispatchEvent(new Event('pointerenter'));
+
     expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('visible');
 
     vi.advanceTimersByTime(2000);
 
     expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('hidden');
 
-    window.dispatchEvent(new Event('touchstart'));
+    sidebarTrigger.dispatchEvent(new Event('pointerdown'));
+
+    expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('visible');
+
+    vi.advanceTimersByTime(2000);
+
+    expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('hidden');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Tab'
+    }));
 
     expect(host.querySelector('[data-role="game-session"]')?.getAttribute('data-chrome-state')).toBe('visible');
 

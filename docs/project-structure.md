@@ -42,6 +42,7 @@ Browser game client example.
 - Uses wallet-aware login and lobby flow before entering the current render path
 - Shows local game assets and wallet-backed on-chain assets in separate sections
 - Lists built-in game cartridges from `src/game-cartridges.ts` and injects player, assets, i18n, and platform services when launching one
+- Fits the active game stage to the full viewport without page scroll while preserving the selected cartridge's declared `viewport` aspect ratio
 
 Key files:
 
@@ -123,6 +124,7 @@ Owns the game cartridge SDK shared by the platform and individual games.
 - `GameCartridgeRegistry`
 - `createGameCartridgeRegistry()`
 - game capability declarations for graphics, input, and future networking
+- optional cartridge `viewport` design dimensions used by clients to keep the render stage at the game's intended aspect ratio
 
 The package is singular because it defines the protocol for one cartridge. Concrete games live under `packages/games/*`. Its public entrypoint re-exports focused `types` and `registry` modules.
 
@@ -228,10 +230,11 @@ WeChat Mini Program APIs stay in `apps/wechat-mini-program/src/platform` while o
 
 - `apps/game-client/src/game-cartridges.ts` imports built-in cartridges and registers them with `createGameCartridgeRegistry()`.
 - The lobby renders translated cartridge metadata from each cartridge's external translation catalog.
+- Each cartridge can declare `viewport.designWidth` and `viewport.designHeight`; the game client uses those design dimensions to fit the stage inside the fullscreen session without scrollbars.
 - When the player starts a cartridge, the shell creates `GameCartridgeContext` with player identity, local assets, wallet assets, i18n, resources, and platform services.
 - Before launch, the shell merges `@game-forge/shared-resources` records with the selected cartridge's private resources and preloads required resources.
 - If resource preload fails, the player stays in the lobby and sees a localized load error.
-- During game play, the shell owns transient platform navigation such as return-to-lobby, confirms player-initiated exits, and passes stop requests to the game through `RuntimeModule.onStopRequested()`.
+- During game play, the shell owns transient platform navigation such as return-to-lobby, reveals it from a responsive left-edge handle, confirms player-initiated exits, and passes stop requests to the game through `RuntimeModule.onStopRequested()`.
 - v1 supports `scene-graph-3d` cartridges through `RuntimeModule<GraphicsRenderScene>`.
 - v1 exposes `services.networking.isAvailable === false` as the reserved location for later networking support.
 

@@ -47,6 +47,11 @@ export interface GameCartridgeCapabilities {
   readonly networking?: 'none' | 'client-server' | 'p2p';
 }
 
+export interface GameCartridgeViewportConfig {
+  readonly designHeight: number;
+  readonly designWidth: number;
+}
+
 export interface GameCartridge<messageKey extends string = string> {
   readonly capabilities: GameCartridgeCapabilities;
   createModule(context: GameCartridgeContext<messageKey>): RuntimeModule<GraphicsRenderScene>;
@@ -57,4 +62,5 @@ export interface GameCartridge<messageKey extends string = string> {
   readonly tagKeys: readonly messageKey[];
   readonly themeColor: string;
   readonly titleKey: messageKey;
+  readonly viewport?: GameCartridgeViewportConfig;
 }

@@ -35,6 +35,10 @@ describe('bee-shooter-game-cartridge', () => {
       input: 'keyboard',
       networking: 'none'
     });
+    expect(beeShooterGameCartridge.viewport).toEqual({
+      designHeight: 9,
+      designWidth: 16
+    });
     expect(beeShooterGameCartridge.resources?.every((resource) => resource.key.startsWith('bee-shooter.'))).toBe(true);
     expect(beeShooterGameCartridge.messages['en-US'][beeShooterGameCartridge.titleKey]).toBe('Bee Shooter');
     expect(beeShooterGameCartridge.messages['zh-CN'][beeShooterGameCartridge.titleKey]).toBe('小蜜蜂射击');
